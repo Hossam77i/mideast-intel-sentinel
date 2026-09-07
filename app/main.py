@@ -7,7 +7,7 @@ from typing import Optional
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Query, Body, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response, PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import (
@@ -44,11 +44,13 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
+is_serverless = bool(os.environ.get("SERVERLESS") or os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+
 app = FastAPI(
     title="Middle East Intelligence Sentinel",
     description="Strategic News Tracking, Geopolitical Graph & Predictive Intelligence for Egypt, Iran, Israel, and Germany",
     version="2.1.0",
-    lifespan=lifespan
+    lifespan=None if is_serverless else lifespan
 )
 
 app.add_middleware(
@@ -58,6 +60,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    import traceback
+    return PlainTextResponse(f"SERVER UNHANDLED EXCEPTION:\n{traceback.format_exc()}", status_code=500)
 
 @app.get("/api/public-url")
 def api_public_url():

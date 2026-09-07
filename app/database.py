@@ -34,13 +34,25 @@ else:
         pass
     DB_PATH = os.environ.get("SENTINEL_DB_PATH", ORIGINAL_DB_PATH)
 
+_db_checked = False
+
 def get_connection():
+    global _db_checked
     try:
         os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
     except Exception:
         pass
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
+    if not _db_checked:
+        _db_checked = True
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='articles'")
+            if not cursor.fetchone():
+                init_db()
+        except Exception:
+            pass
     return conn
 
 def init_db():
