@@ -15,6 +15,22 @@ if (window.location.hostname.includes("github.io")) {
   API_BASE = "https://darkweb-sentinel.vercel.app";
 }
 
+window.copyToClipboard = window.copyToClipboard || function(text) {
+  if (!text) return;
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  } catch (e) {}
+};
+
 async function apiFetch(url, options = {}) {
   const fullUrl = (API_BASE && url.startsWith("/")) ? (API_BASE + url) : url;
   options.headers = options.headers || {};
@@ -2318,6 +2334,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function openModal(id) {
     const el = document.getElementById(id);
     if (el) {
+      el.classList.remove("hidden");
       el.classList.add("open");
       el.classList.add("active");
     }
@@ -2326,17 +2343,46 @@ document.addEventListener("DOMContentLoaded", () => {
   function closeModal(id) {
     const el = document.getElementById(id);
     if (el) {
+      el.classList.add("hidden");
       el.classList.remove("open");
       el.classList.remove("active");
     }
   }
 
+  window.openModal = openModal;
+  window.closeModal = closeModal;
+
   window.copyToClipboard = function(text) {
-    navigator.clipboard.writeText(text).then(() => {
-      showToast("✓ Copied to clipboard: " + text, true);
-    }).catch(() => {
-      prompt("Copy onion link:", text);
-    });
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("✓ Copied to clipboard: " + text, true);
+      }).catch(() => {
+        window.fallbackCopyText(text);
+      });
+    } else {
+      window.fallbackCopyText(text);
+    }
+  };
+
+  window.fallbackCopyText = function(text) {
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(textarea);
+      if (ok) {
+        showToast("✓ Copied to clipboard: " + text, true);
+        return;
+      }
+    } catch (e) {}
+    prompt("Copy onion link:", text);
   };
 
   function escapeHtml(str) {
@@ -2461,11 +2507,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (state.searchCountry && state.searchCountry !== "All") url += `&country=${encodeURIComponent(state.searchCountry)}`;
     }
 
+    const fullUrl = (API_BASE && url.startsWith("/")) ? (API_BASE + url) : url;
     if (format === "html") {
-      window.open(url, "_blank");
+      window.open(fullUrl, "_blank");
     } else {
       const a = document.createElement("a");
-      a.href = url;
+      a.href = fullUrl;
       a.download = `blackwolf_${state.exportContext}_dossier.${format}`;
       document.body.appendChild(a);
       a.click();

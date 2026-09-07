@@ -750,12 +750,12 @@
 
           <div class="tor-info-box">
             <div class="info-row">
-              <span>SOCKS5h Proxy:</span>
-              <code id="torInfoProxyDisplay">socks5h://127.0.0.1:9050</code>
+              <span>Tor Gateway / Proxy:</span>
+              <code id="torInfoProxyDisplay">tor2web</code>
             </div>
             <div class="info-row">
               <span>Tor Routing Status:</span>
-              <strong id="torInfoRouting" class="text-accent-green">Active</strong>
+              <strong id="torInfoRouting" class="text-accent-green" onclick="window.openTorModal()" style="cursor:pointer;" title="Click to Connect Tor Network or Configure Gateway">Active</strong>
             </div>
             <div class="info-row">
               <span>Tor Exit Node IP:</span>
@@ -768,8 +768,8 @@
           </div>
 
           <div style="display: flex; gap: 8px; margin-top: 1rem; flex-wrap: wrap;">
-            <button type="button" class="primary-btn" onclick="window.quickConnectTor('tor2web')">⚡ Instant Connect (Tor2Web)</button>
-            <button type="button" class="secondary-btn" onclick="window.openTorModal()">🧅 Connect My Tor Network</button>
+            <button type="button" id="btnQuickConnectTor2Web" class="primary-btn" onclick="window.quickConnectTor('tor2web')">⚡ Instant Connect (Tor2Web)</button>
+            <button type="button" id="btnConnectMyTorNetwork" class="secondary-btn" onclick="window.openTorModal()">🧅 Connect My Tor Network</button>
             <button type="button" id="refreshTorBtn" class="secondary-btn" onclick="window.checkTorStatus()">🔄 Refresh Circuit</button>
           </div>
         </div>
@@ -1219,6 +1219,8 @@
         </div>
       </form>
     </div>
+  </div>
+
   <!-- MODAL: ADD CUSTOM SEARCH ENGINE / DIRECTORY -->
   <div id="addEngineModal" class="modal-backdrop">
     <div class="modal-dialog">
