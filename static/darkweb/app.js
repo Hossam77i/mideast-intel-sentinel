@@ -11,6 +11,8 @@ const KNOWN_BACKENDS = [
 let API_BASE = "";
 if (window.location.hostname.includes("github.io")) {
   API_BASE = localStorage.getItem(STORAGE_BACKEND_KEY) || KNOWN_BACKENDS[0];
+} else if (window.location.pathname.startsWith("/darkweb") || window.location.pathname.startsWith("/static/darkweb")) {
+  API_BASE = "https://darkweb-sentinel.vercel.app";
 }
 
 async function apiFetch(url, options = {}) {
@@ -247,9 +249,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const mideastLink = document.getElementById("mideastSentinelLink");
       
       if (mideastLink) {
-        if (isRemote) {
-          mideastLink.href = data.mideast_url || "/";
-          mideastLink.title = `Switch to Middle East Sentinel`;
+        if (data && data.mideast_url) {
+          mideastLink.href = data.mideast_url;
+          mideastLink.title = `Switch to Middle East Sentinel (${data.mideast_url})`;
+        } else if (isRemote) {
+          mideastLink.href = "https://mideast-intel-sentinel1.vercel.app";
+          mideastLink.title = "Switch to Middle East Sentinel";
         } else {
           mideastLink.href = "http://localhost:8000";
           mideastLink.title = "Switch to Middle East Sentinel (http://localhost:8000)";

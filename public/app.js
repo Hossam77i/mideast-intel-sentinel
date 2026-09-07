@@ -269,8 +269,11 @@ async function loadPublicUrl() {
     const isRemote = !["localhost", "127.0.0.1"].includes(window.location.hostname);
     const darkwebBtn = document.getElementById("darkweb-sentinel-link");
     if (darkwebBtn) {
-      if (isRemote) {
-        darkwebBtn.href = "/static/darkweb/index.html";
+      if (data && data.darkweb_url) {
+        darkwebBtn.href = data.darkweb_url;
+        darkwebBtn.title = `Switch to Egypt Black Wolf Darknet Sentinel (${data.darkweb_url})`;
+      } else if (isRemote) {
+        darkwebBtn.href = "https://darkweb-sentinel.vercel.app";
         darkwebBtn.title = "Switch to Egypt Black Wolf Darknet Sentinel";
       } else {
         darkwebBtn.href = "http://localhost:8080";

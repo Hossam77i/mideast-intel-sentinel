@@ -95,9 +95,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     return PlainTextResponse(f"SERVER UNHANDLED EXCEPTION:\n{traceback.format_exc()}", status_code=500)
 
 @app.get("/api/public-url")
-def api_public_url():
+def api_public_url(request: Request):
     mideast_url = os.getenv("PUBLIC_URL") or os.getenv("MIDEAST_PUBLIC_URL") or ""
-    darkweb_url = os.getenv("DARKWEB_PUBLIC_URL") or ""
+    darkweb_url = os.getenv("DARKWEB_PUBLIC_URL") or os.getenv("DARKWEB_URL") or ""
     if not mideast_url or not darkweb_url:
         try:
             if os.path.exists("/var/run/sentinel-tunnels.json"):
@@ -116,6 +116,19 @@ def api_public_url():
                         mideast_url = matches[-1]
         except Exception as e:
             logger.error(f"Error reading tunnel log: {e}")
+
+    # Seamless cloud defaults
+    if not darkweb_url:
+        darkweb_url = "https://darkweb-sentinel.vercel.app"
+
+    if not mideast_url:
+        host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+        if host and "localhost" not in host and "127.0.0.1" not in host:
+            proto = request.headers.get("x-forwarded-proto", "https")
+            mideast_url = f"{proto}://{host}"
+        else:
+            mideast_url = "https://mideast-intel-sentinel1.vercel.app" if is_serverless else ""
+
     return {
         "public_url": mideast_url,
         "darkweb_url": darkweb_url,
@@ -437,7 +450,7 @@ if os.path.exists(DARKWEB_STATIC_DIR):
     app.mount("/darkweb", StaticFiles(directory=DARKWEB_STATIC_DIR, html=True), name="darkweb")
 
 # --- CROSS-SENTINEL ROUTE PROXIES TO DARKNET SENTINEL ---
-DARKWEB_LOCAL_URL = os.getenv("DARKWEB_LOCAL_URL", "http://127.0.0.1:8080")
+DARKWEB_LOCAL_URL = os.getenv("DARKWEB_LOCAL_URL") or os.getenv("DARKWEB_URL") or os.getenv("DARKWEB_PUBLIC_URL") or ("https://darkweb-sentinel.vercel.app" if is_serverless else "http://127.0.0.1:8080")
 
 @app.api_route("/api/search", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/recon/{path:path}", methods=["GET", "POST", "OPTIONS"])
@@ -452,18 +465,23 @@ DARKWEB_LOCAL_URL = os.getenv("DARKWEB_LOCAL_URL", "http://127.0.0.1:8080")
 @app.api_route("/api/tor/{path:path}", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/cache/{path:path}", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/watchlist/{path:path}", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/threat-graph/{path:path}", methods=["GET", "POST", "OPTIONS"])
 async def proxy_to_darkweb(request: Request, path: Optional[str] = None):
-    """Transparently proxies Darknet Sentinel routes to local port 8080."""
-    req_path = request.url.path
+    """Transparently proxies Darknet Sentinel routes to darkweb backend."""
+    req_path = request.scope.get("path") or request.url.path
     target_url = f"{DARKWEB_LOCAL_URL}{req_path}"
-    if request.url.query:
-        target_url += f"?{request.url.query}"
     
-    headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
+    query_items = [(k, v) for k, v in request.query_params.multi_items() if k != "_route_path"]
+    if query_items:
+        import urllib.parse
+        target_url += f"?{urllib.parse.urlencode(query_items)}"
+    
+    excluded_req = {"host", "content-length", "accept-encoding"}
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in excluded_req}
     method = request.method
     body = await request.body()
     
-    async with httpx.AsyncClient(timeout=35.0) as client:
+    async with httpx.AsyncClient(timeout=35.0, follow_redirects=True) as client:
         try:
             resp = await client.request(method, target_url, headers=headers, content=body)
             excluded_headers = {"content-length", "content-encoding", "transfer-encoding", "connection", "keep-alive"}
@@ -477,3 +495,9 @@ async def proxy_to_darkweb(request: Request, path: Optional[str] = None):
         except Exception as e:
             logger.error(f"Error proxying to Darknet Sentinel ({target_url}): {e}")
             raise HTTPException(status_code=502, detail=f"Darknet Backend Proxy Error: {str(e)}")
+
+@app.get("/api/darkweb/stats")
+async def proxy_darkweb_stats(request: Request):
+    req = Request(scope=dict(request.scope, path="/api/stats"))
+    return await proxy_to_darkweb(req)
+
