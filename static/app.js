@@ -150,9 +150,145 @@ let currentUser = localStorage.getItem("sentinel_username") || "Hossam";
 let currentTheme = localStorage.getItem("sentinel_theme") || "dark";
 let publicShareUrl = "";
 
+function savePreferences() {
+  try {
+    const yearMode = document.getElementById("filter-year-mode")?.value;
+    if (yearMode) localStorage.setItem("mideast_year_mode", yearMode);
+
+    const orderBy = document.getElementById("filter-order-by")?.value;
+    if (orderBy) localStorage.setItem("mideast_order_by", orderBy);
+
+    const country = document.getElementById("filter-country")?.value;
+    if (country) localStorage.setItem("mideast_country", country);
+
+    const category = document.getElementById("filter-category")?.value;
+    if (category) localStorage.setItem("mideast_category", category);
+
+    const urgency = document.getElementById("filter-urgency")?.value;
+    if (urgency) localStorage.setItem("mideast_urgency", urgency);
+
+    const search = document.getElementById("filter-search")?.value;
+    if (search !== undefined && search !== null) localStorage.setItem("mideast_search", search);
+
+    if (customFromYear) localStorage.setItem("mideast_custom_from", customFromYear);
+    if (customToYear) localStorage.setItem("mideast_custom_to", customToYear);
+
+    const graphCountry = document.getElementById("graph-filter-country")?.value;
+    if (graphCountry) localStorage.setItem("mideast_graph_country", graphCountry);
+
+    const graphType = document.getElementById("graph-filter-type")?.value;
+    if (graphType) localStorage.setItem("mideast_graph_type", graphType);
+  } catch (e) {
+    console.warn("Could not save preferences:", e);
+  }
+}
+
+function restoreSavedPreferences() {
+  try {
+    // 1. Time Mode
+    const savedYearMode = localStorage.getItem("mideast_year_mode");
+    const yearSelect = document.getElementById("filter-year-mode");
+    const customContainer = document.getElementById("custom-range-container");
+    const banner = document.getElementById("active-time-banner");
+    const bannerText = document.getElementById("banner-year-text");
+
+    if (savedYearMode && yearSelect) {
+      yearSelect.value = savedYearMode;
+      if (savedYearMode === "custom") {
+        customFromYear = localStorage.getItem("mideast_custom_from");
+        customToYear = localStorage.getItem("mideast_custom_to");
+        if (customFromYear && customToYear) {
+          const fromInput = document.getElementById("input-from-year");
+          const toInput = document.getElementById("input-to-year");
+          if (fromInput) fromInput.value = customFromYear;
+          if (toInput) toInput.value = customToYear;
+          currentYear = "custom";
+          if (banner && bannerText) {
+            banner.classList.remove("hidden");
+            bannerText.innerText = `Range: ${customFromYear} to ${customToYear}`;
+          }
+        }
+        if (customContainer) customContainer.classList.remove("hidden");
+      } else {
+        currentYear = savedYearMode;
+        if (currentYear !== "2026" && currentYear !== "All") {
+          if (banner && bannerText) {
+            banner.classList.remove("hidden");
+            bannerText.innerText = `Year ${currentYear}`;
+          }
+        } else if (currentYear === "All") {
+          if (banner && bannerText) {
+            banner.classList.remove("hidden");
+            bannerText.innerText = "All Archives (2022 - Present)";
+          }
+        }
+      }
+    }
+
+    // 2. Sort Order
+    const savedOrderBy = localStorage.getItem("mideast_order_by");
+    const sortSelect = document.getElementById("filter-order-by");
+    if (savedOrderBy && sortSelect) {
+      sortSelect.value = savedOrderBy;
+      currentOrderBy = savedOrderBy;
+    }
+
+    // 3. Country / Axis
+    const savedCountry = localStorage.getItem("mideast_country");
+    const countrySelect = document.getElementById("filter-country");
+    if (savedCountry && countrySelect) {
+      countrySelect.value = savedCountry;
+    }
+
+    // 4. Category
+    const savedCategory = localStorage.getItem("mideast_category");
+    const categorySelect = document.getElementById("filter-category");
+    if (savedCategory && categorySelect) {
+      categorySelect.value = savedCategory;
+    }
+
+    // 5. Urgency
+    const savedUrgency = localStorage.getItem("mideast_urgency");
+    const urgencySelect = document.getElementById("filter-urgency");
+    if (savedUrgency && urgencySelect) {
+      urgencySelect.value = savedUrgency;
+    }
+
+    // 6. Search Query
+    const savedSearch = localStorage.getItem("mideast_search");
+    const searchInput = document.getElementById("filter-search");
+    if (savedSearch && searchInput) {
+      searchInput.value = savedSearch;
+    }
+
+    // 7. Graph Filters
+    const savedGraphCountry = localStorage.getItem("mideast_graph_country");
+    const graphCountrySelect = document.getElementById("graph-filter-country");
+    if (savedGraphCountry && graphCountrySelect) {
+      graphCountrySelect.value = savedGraphCountry;
+    }
+
+    const savedGraphType = localStorage.getItem("mideast_graph_type");
+    const graphTypeSelect = document.getElementById("graph-filter-type");
+    if (savedGraphType && graphTypeSelect) {
+      graphTypeSelect.value = savedGraphType;
+    }
+
+    // 8. Active Tab
+    const hashTab = window.location.hash ? window.location.hash.substring(1) : null;
+    const savedTab = hashTab || localStorage.getItem("mideast_active_tab");
+    if (savedTab && document.getElementById(savedTab)) {
+      switchTab(savedTab, false);
+    }
+  } catch (e) {
+    console.warn("Could not restore saved preferences:", e);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initUser();
+  restoreSavedPreferences();
   initStats();
   loadPublicUrl();
   resetAndReloadArticles();
@@ -305,6 +441,7 @@ function handleTimeModeChange() {
 
   if (mode === "custom") {
     customContainer.classList.remove("hidden");
+    savePreferences();
     return; // Wait for applyCustomRange()
   } else {
     customContainer.classList.add("hidden");
@@ -322,6 +459,7 @@ function handleTimeModeChange() {
       banner.classList.add("hidden");
     }
 
+    savePreferences();
     applyFiltersInterconnected();
   }
 }
@@ -344,6 +482,7 @@ function applyCustomRange() {
   banner.classList.remove("hidden");
   bannerText.innerText = `Range: ${customFromYear} to ${customToYear}`;
 
+  savePreferences();
   applyFiltersInterconnected();
 }
 
@@ -354,11 +493,17 @@ function resetToLiveTime() {
   customToYear = null;
   currentYear = "2026";
   document.getElementById("active-time-banner").classList.add("hidden");
+  try {
+    localStorage.removeItem("mideast_custom_from");
+    localStorage.removeItem("mideast_custom_to");
+  } catch (e) {}
+  savePreferences();
   applyFiltersInterconnected();
 }
 
 function handleSortChange() {
   currentOrderBy = document.getElementById("filter-order-by").value;
+  savePreferences();
   resetAndReloadArticles();
 }
 
@@ -423,13 +568,20 @@ async function fetchHistoricalArchives() {
 /* ==========================================================================
    TAB NAVIGATION
    ========================================================================== */
-function switchTab(tabId) {
+function switchTab(tabId, updateHistory = true) {
   document.querySelectorAll(".nav-tab").forEach(tab => {
     tab.classList.toggle("active", tab.getAttribute("data-tab") === tabId);
   });
   document.querySelectorAll(".tab-pane").forEach(pane => {
     pane.classList.toggle("active", pane.id === tabId);
   });
+
+  try {
+    localStorage.setItem("mideast_active_tab", tabId);
+    if (updateHistory && history.replaceState) {
+      history.replaceState(null, null, `#${tabId}`);
+    }
+  } catch (e) {}
 
   if (tabId === "tab-graph") {
     setTimeout(() => {
@@ -453,6 +605,7 @@ function filterByCountryDossier(country) {
   if (select) {
     select.value = country;
   }
+  savePreferences();
   switchTab("tab-feed");
   resetAndReloadArticles();
 }
@@ -510,12 +663,14 @@ async function triggerIngestion() {
    ========================================================================== */
 function handleSearchKey(event) {
   if (event.key === "Enter") {
+    savePreferences();
     resetAndReloadArticles();
     updateOsintSearchLinks();
   }
 }
 
 function resetAndReloadArticles() {
+  savePreferences();
   currentOffset = 0;
   loadArticles(false);
 }
@@ -619,6 +774,16 @@ function resetFilters() {
   document.getElementById("filter-order-by").value = "time_desc";
   document.getElementById("filter-search").value = "";
   currentOrderBy = "time_desc";
+  try {
+    localStorage.setItem("mideast_country", "All");
+    localStorage.setItem("mideast_category", "All");
+    localStorage.setItem("mideast_urgency", "0");
+    localStorage.setItem("mideast_year_mode", "2026");
+    localStorage.setItem("mideast_order_by", "time_desc");
+    localStorage.setItem("mideast_search", "");
+    localStorage.removeItem("mideast_custom_from");
+    localStorage.removeItem("mideast_custom_to");
+  } catch (e) {}
   resetToLiveTime();
 }
 
@@ -802,6 +967,7 @@ async function initGraph() {
 }
 
 async function refreshGraph() {
+  savePreferences();
   const country = document.getElementById("graph-filter-country").value;
   const nodeType = document.getElementById("graph-filter-type").value;
 
@@ -1008,6 +1174,20 @@ async function loadCausalChains() {
    ========================================================================== */
 async function loadSettings() {
   try {
+    const cached = localStorage.getItem("mideast_settings_" + currentUser);
+    if (cached) {
+      const s = JSON.parse(cached);
+      if (s.telegram_enabled !== undefined) document.getElementById("setting-tg-enabled").checked = s.telegram_enabled;
+      if (s.telegram_chat_id !== undefined) document.getElementById("setting-tg-chatid").value = s.telegram_chat_id;
+      if (s.urgency_threshold !== undefined) {
+        document.getElementById("setting-urgency-threshold").value = s.urgency_threshold;
+        document.getElementById("urgency-val").innerText = s.urgency_threshold;
+      }
+      if (s.poll_interval_minutes !== undefined) document.getElementById("setting-poll-interval").value = s.poll_interval_minutes;
+    }
+  } catch (e) {}
+
+  try {
     const res = await apiFetch(`/api/settings?username=${encodeURIComponent(currentUser)}`);
     const s = await res.json();
 
@@ -1030,6 +1210,10 @@ async function loadSettings() {
     document.getElementById("setting-urgency-threshold").value = s.urgency_threshold || 75;
     document.getElementById("urgency-val").innerText = s.urgency_threshold || 75;
     document.getElementById("setting-poll-interval").value = s.poll_interval_minutes || 10;
+
+    try {
+      localStorage.setItem("mideast_settings_" + currentUser, JSON.stringify(s));
+    } catch (e) {}
   } catch (err) {
     console.error("Failed to load settings:", err);
   }
@@ -1050,6 +1234,10 @@ async function saveSettings() {
   if (tokenVal && !tokenVal.includes("•")) {
     payload.telegram_bot_token = tokenVal;
   }
+
+  try {
+    localStorage.setItem("mideast_settings_" + currentUser, JSON.stringify(payload));
+  } catch (e) {}
 
   try {
     await apiFetch("/api/settings", {

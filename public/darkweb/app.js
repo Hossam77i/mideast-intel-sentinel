@@ -334,6 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // --- INITIALIZATION ---
   initTheme();
   bindGlobalEvents();
+  restoreSavedPreferences();
   loadStats();
   checkTorStatus();
   loadWatchdogStatus();
@@ -351,6 +352,91 @@ document.addEventListener("DOMContentLoaded", () => {
   loadSettings();
   loadTunnelsAndCrossLinks();
   setInterval(loadTunnelsAndCrossLinks, 30000);
+
+  function restoreSavedPreferences() {
+    try {
+      // 1. Time range
+      const savedTime = localStorage.getItem("darkweb_time_range");
+      const timeSelect = document.getElementById("globalTimeSelect");
+      const customYearWrap = document.getElementById("customYearRangeWrap");
+      if (savedTime && timeSelect) {
+        timeSelect.value = savedTime;
+        state.timeRange = savedTime;
+        if (savedTime === "custom") customYearWrap?.classList.remove("hidden");
+      }
+
+      // 2. Sort order
+      const savedSort = localStorage.getItem("darkweb_sort_order");
+      const sortSelect = document.getElementById("globalSortSelect");
+      if (savedSort && sortSelect) {
+        sortSelect.value = savedSort;
+        state.sortOrder = savedSort;
+      }
+
+      // 3. Search category
+      const savedCat = localStorage.getItem("darkweb_search_category");
+      const searchCat = document.getElementById("searchCategoryFilter");
+      if (savedCat && searchCat) {
+        searchCat.value = savedCat;
+        state.searchCategory = savedCat;
+      }
+
+      // 4. Search country
+      const savedCountry = localStorage.getItem("darkweb_search_country");
+      if (savedCountry) {
+        state.searchCountry = savedCountry;
+        document.querySelectorAll("#searchCountryFilter .pill").forEach(p => {
+          if (p.getAttribute("data-val") === savedCountry) p.classList.add("active");
+          else p.classList.remove("active");
+        });
+      }
+
+      // 5. Search mode
+      const savedMode = localStorage.getItem("darkweb_search_mode");
+      if (savedMode) {
+        setSearchMode(savedMode, false);
+      }
+
+      // 6. Recon scope
+      const savedScope = localStorage.getItem("darkweb_recon_scope");
+      const reconScope = document.getElementById("reconScopeSelect");
+      if (savedScope && reconScope) {
+        reconScope.value = savedScope;
+        state.reconScope = savedScope;
+      }
+
+      // 7. Leak forum
+      const savedLeakForum = localStorage.getItem("darkweb_leak_forum");
+      const leakForum = document.getElementById("leakForumSelect");
+      if (savedLeakForum && leakForum) {
+        leakForum.value = savedLeakForum;
+        state.leakForumType = savedLeakForum;
+      }
+
+      // 8. Target category & status
+      const savedTargetCat = localStorage.getItem("darkweb_target_category");
+      const targetCat = document.getElementById("targetCategoryFilter");
+      if (savedTargetCat && targetCat) {
+        targetCat.value = savedTargetCat;
+        state.targetCategory = savedTargetCat;
+      }
+      const savedTargetStat = localStorage.getItem("darkweb_target_status");
+      const targetStat = document.getElementById("targetStatusFilter");
+      if (savedTargetStat && targetStat) {
+        targetStat.value = savedTargetStat;
+        state.targetStatus = savedTargetStat;
+      }
+
+      // 9. Active tab
+      const hashTab = window.location.hash ? window.location.hash.substring(1) : null;
+      const savedTab = hashTab || localStorage.getItem("darkweb_active_tab");
+      if (savedTab && document.getElementById(savedTab)) {
+        switchTab(savedTab, false);
+      }
+    } catch (e) {
+      console.warn("Error restoring saved preferences:", e);
+    }
+  }
 
   // --- THEME SWITCHER ---
   function initTheme() {
@@ -435,6 +521,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const customYearWrap = document.getElementById("customYearRangeWrap");
     timeSelect?.addEventListener("change", (e) => {
       const val = e.target.value;
+      localStorage.setItem("darkweb_time_range", val);
       if (val === "custom") {
         customYearWrap?.classList.remove("hidden");
         state.timeRange = "custom";
@@ -458,6 +545,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Global Sort Select
     document.getElementById("globalSortSelect")?.addEventListener("change", (e) => {
       state.sortOrder = e.target.value;
+      localStorage.setItem("darkweb_sort_order", state.sortOrder);
       refreshActiveViews();
     });
 
@@ -477,6 +565,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelectorAll("#searchCountryFilter .pill").forEach(p => p.classList.remove("active"));
         pill.classList.add("active");
         state.searchCountry = pill.getAttribute("data-val");
+        localStorage.setItem("darkweb_search_country", state.searchCountry);
         executeSearch(true);
       });
     });
@@ -484,6 +573,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Search Category
     document.getElementById("searchCategoryFilter")?.addEventListener("change", (e) => {
       state.searchCategory = e.target.value;
+      localStorage.setItem("darkweb_search_category", state.searchCategory);
       executeSearch(true);
     });
 
@@ -549,10 +639,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Targets Filter
     document.getElementById("targetCategoryFilter")?.addEventListener("change", (e) => {
       state.targetCategory = e.target.value;
+      localStorage.setItem("darkweb_target_category", state.targetCategory);
       loadTargets();
     });
     document.getElementById("targetStatusFilter")?.addEventListener("change", (e) => {
       state.targetStatus = e.target.value;
+      localStorage.setItem("darkweb_target_status", state.targetStatus);
       loadTargets();
     });
 
@@ -665,8 +757,21 @@ document.addEventListener("DOMContentLoaded", () => {
     // Point 2: 24/7 Watchdog Controls & Watchlist
     document.getElementById("toggleWatchdogBtn")?.addEventListener("click", toggleWatchdog);
     document.getElementById("triggerWatchdogNowBtn")?.addEventListener("click", triggerWatchdogNow);
-    document.getElementById("watchdogIntervalSelect")?.addEventListener("change", () => {
-      toggleWatchdog();
+    document.getElementById("watchdogIntervalSelect")?.addEventListener("change", async (e) => {
+      const newInterval = parseInt(e.target.value || "900");
+      localStorage.setItem("darkweb_watchdog_interval", String(newInterval));
+      const isActive = localStorage.getItem("darkweb_watchdog_active") !== "false";
+      _applyWatchdogUI(isActive, Math.round(newInterval / 60));
+      try {
+        await apiFetch("/api/watchdog/toggle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: isActive, interval_seconds: newInterval })
+        });
+        showToast(`✓ Watchdog interval updated to ${Math.round(newInterval / 60)}m.`, true);
+      } catch (err) {
+        console.warn("Error updating interval:", err);
+      }
     });
     document.getElementById("addWatchlistForm")?.addEventListener("submit", handleAddWatchlistKeyword);
 
@@ -705,8 +810,18 @@ document.addEventListener("DOMContentLoaded", () => {
     input.type = input.type === "password" ? "text" : "password";
   }
 
-  function switchTab(tabId) {
+  function switchTab(tabId, updateHash = true) {
+    if (!tabId) return;
     state.activeTab = tabId;
+    localStorage.setItem("darkweb_active_tab", tabId);
+    if (updateHash) {
+      try {
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, null, `#${tabId}`);
+        }
+      } catch (_) {}
+    }
+
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
 
@@ -724,8 +839,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function setSearchMode(mode) {
+  function setSearchMode(mode, triggerSearch = true) {
     state.searchMode = mode;
+    localStorage.setItem("darkweb_search_mode", mode);
     const btnThreat = document.getElementById("modeThreatIntel");
     const btnGlobal = document.getElementById("modeGlobal");
     const helper = document.getElementById("modeHelperText");
@@ -739,7 +855,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btnThreat?.classList.remove("active");
       if (helper) helper.textContent = "Broad indexing across all darknet services, radios, media, forums, and mirrors.";
     }
-    executeSearch(true);
+    if (triggerSearch) executeSearch(true);
   }
 
   // --- STATS & TOR DIAGNOSTICS ---
@@ -1076,6 +1192,25 @@ document.addEventListener("DOMContentLoaded", () => {
           summaryText.textContent = `Verified Service Discoveries for "${query}" (${data.sites_live} online of ${data.sites_found} found)`;
         }
 
+        // Persist operation locally for immediate access across serverless restarts
+        try {
+          let localOps = [];
+          const localRaw = localStorage.getItem("darkweb_local_recon_ops");
+          if (localRaw) localOps = JSON.parse(localRaw);
+          localOps = localOps.filter(o => (o.query || "").toLowerCase() !== query.toLowerCase());
+          localOps.unshift({
+            id: data.cached ? "CACHE" : "LIVE",
+            query: query,
+            search_scope: state.reconScope || "All Active Engines",
+            timestamp: data.timestamp || new Date().toISOString(),
+            sites_found: data.sites_found || (data.results ? data.results.length : 0),
+            sites_live: data.sites_live || 0,
+            duration_ms: data.duration_ms || 120
+          });
+          if (localOps.length > 25) localOps = localOps.slice(0, 25);
+          localStorage.setItem("darkweb_local_recon_ops", JSON.stringify(localOps));
+        } catch (_) {}
+
         loadStats();
         loadReconHistory();
         loadDiscoveredEngines();
@@ -1375,35 +1510,52 @@ document.addEventListener("DOMContentLoaded", () => {
     const tableBody = document.getElementById("reconHistoryTableBody");
     if (!tableBody) return;
 
+    let ops = [];
     try {
-      const res = await apiFetch("/api/recon/operations?limit=15");
+      const res = await apiFetch("/api/recon/operations?limit=25");
       const data = await res.json();
       if (data.success && data.operations) {
-        if (data.operations.length === 0) {
-          tableBody.innerHTML = '<tr><td colspan="8" class="text-muted text-center" style="padding:1.5rem;">No past search operations recorded yet.</td></tr>';
-          return;
-        }
-
-        tableBody.innerHTML = data.operations.map(op => `
-          <tr>
-            <td><code>#${op.id}</code></td>
-            <td><strong>${escapeHtml(op.query)}</strong></td>
-            <td><span class="badge">${escapeHtml(op.search_scope)}</span></td>
-            <td>${formatDate(op.timestamp)}</td>
-            <td>${op.sites_found}</td>
-            <td><span class="text-accent-green font-bold">${op.sites_live} Live</span></td>
-            <td>${op.duration_ms} ms</td>
-            <td>
-              <button class="pill-btn primary" onclick="reloadReconOperation('${escapeHtml(op.query)}')">
-                ⚡ View Cache
-              </button>
-            </td>
-          </tr>
-        `).join("");
+        ops = data.operations;
       }
     } catch (e) {
-      console.warn("Error loading recon history:", e);
+      console.warn("Error loading recon history from API:", e);
     }
+
+    // Merge with any locally stored user recon operations
+    try {
+      const localRaw = localStorage.getItem("darkweb_local_recon_ops");
+      if (localRaw) {
+        const localOps = JSON.parse(localRaw);
+        const existingQueries = new Set(ops.map(o => (o.query || "").toLowerCase()));
+        for (const lo of localOps) {
+          if (!existingQueries.has((lo.query || "").toLowerCase())) {
+            ops.push(lo);
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (ops.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="8" class="text-muted text-center" style="padding:1.5rem;">No past search operations recorded yet.</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = ops.map(op => `
+      <tr>
+        <td><code>#${op.id || "REC"}</code></td>
+        <td><strong>${escapeHtml(op.query)}</strong></td>
+        <td><span class="badge">${escapeHtml(op.search_scope || "All Active Engines")}</span></td>
+        <td>${formatDate(op.timestamp)}</td>
+        <td>${op.sites_found}</td>
+        <td><span class="text-accent-green font-bold">${op.sites_live} Live</span></td>
+        <td>${op.duration_ms} ms</td>
+        <td>
+          <button class="pill-btn primary" onclick="reloadReconOperation('${escapeHtml(op.query)}')">
+            ⚡ View Cache
+          </button>
+        </td>
+      </tr>
+    `).join("");
   }
 
   window.reloadReconOperation = function(query) {
@@ -1914,6 +2066,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (thresholdInput) thresholdInput.value = data.alert_threshold || 75;
       if (cutoffInput) cutoffInput.value = data.relevance_min_score || 25;
 
+      const savedCustom = localStorage.getItem("darkweb_saved_settings");
+      if (savedCustom) {
+        try {
+          const parsed = JSON.parse(savedCustom);
+          if (parsed.alert_threshold && thresholdInput) thresholdInput.value = parsed.alert_threshold;
+          if (parsed.relevance_min_score && cutoffInput) cutoffInput.value = parsed.relevance_min_score;
+        } catch (_) {}
+      }
+
       if (badge && data.is_configured) {
         badge.textContent = "✓ Protected & Configured";
         badge.className = "badge badge-success";
@@ -1938,6 +2099,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (cutoffVal) payload.relevance_min_score = parseInt(cutoffVal);
 
     try {
+      localStorage.setItem("darkweb_saved_settings", JSON.stringify(payload));
       const res = await apiFetch("/api/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2237,33 +2399,67 @@ document.addEventListener("DOMContentLoaded", () => {
   // ========================================================
   // POINT 2: 24/7 AUTONOMOUS WATCHDOG DAEMON
   // ========================================================
+  function _applyWatchdogUI(isActive, intervalMins = 15, statusText = "ARMED") {
+    const pillText = document.getElementById("watchdogHeaderText");
+    if (pillText) {
+      pillText.textContent = isActive ? `24/7 Watchdog: Armed (${intervalMins}m)` : "24/7 Watchdog: Paused";
+    }
+    const cardBadge = document.getElementById("watchdogStatusCardBadge");
+    if (cardBadge) {
+      cardBadge.textContent = isActive ? `● Running Autonomous Polling (${statusText})` : "○ Watchdog Paused";
+      cardBadge.className = isActive ? "badge badge-success" : "badge badge-warning";
+    }
+    const toggleBtn = document.getElementById("toggleWatchdogBtn");
+    if (toggleBtn) {
+      toggleBtn.textContent = isActive ? "Pause Watchdog" : "Resume Watchdog";
+      toggleBtn.className = isActive ? "pill-btn danger" : "pill-btn primary";
+    }
+  }
+
   async function loadWatchdogStatus() {
+    // 1. Instant local restore to guarantee zero reset on page refresh
+    const localActive = localStorage.getItem("darkweb_watchdog_active");
+    const localInterval = localStorage.getItem("darkweb_watchdog_interval");
+    if (localInterval) {
+      const intervalSelect = document.getElementById("watchdogIntervalSelect");
+      if (intervalSelect) intervalSelect.value = localInterval;
+    }
+    if (localActive !== null) {
+      const isActive = localActive === "true";
+      const mins = localInterval ? Math.round(parseInt(localInterval) / 60) : 15;
+      _applyWatchdogUI(isActive, mins, "ARMED");
+    }
+
+    // 2. Query authoritative backend status
     try {
       const res = await apiFetch("/api/watchdog/status");
       const data = await res.json();
       if (data.success && data.watchdog) {
         const w = data.watchdog;
-        const pillText = document.getElementById("watchdogHeaderText");
-        if (pillText) {
-          pillText.textContent = w.active ? `24/7 Watchdog: Armed (${w.interval_minutes}m)` : "24/7 Watchdog: Paused";
+        let finalActive = w.active;
+        if (localActive !== null) {
+          finalActive = localActive === "true";
+        } else {
+          localStorage.setItem("darkweb_watchdog_active", w.active ? "true" : "false");
         }
-        const cardBadge = document.getElementById("watchdogStatusCardBadge");
-        if (cardBadge) {
-          cardBadge.textContent = w.active ? `● Running Autonomous Polling (${w.status})` : "○ Watchdog Paused";
-          cardBadge.className = w.active ? "badge badge-success" : "badge badge-warning";
+        const mins = w.interval_minutes || (localInterval ? Math.round(parseInt(localInterval) / 60) : 15);
+        const finalStatus = finalActive ? (w.status && w.status !== "PAUSED" ? w.status : "ARMED") : "PAUSED";
+        _applyWatchdogUI(finalActive, mins, finalStatus);
+
+        if (localActive !== null && (localActive === "true") !== w.active) {
+          apiFetch("/api/watchdog/toggle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ enabled: finalActive, interval_seconds: parseInt(localInterval || "900") })
+          }).catch(console.warn);
         }
+
         const cycles = document.getElementById("watchdogTotalCycles");
         if (cycles) cycles.textContent = w.total_scans_executed || 0;
         const alerts = document.getElementById("watchdogAlertsSent");
         if (alerts) alerts.textContent = w.total_alerts_dispatched || 0;
         const lastRun = document.getElementById("watchdogLastRunTime");
         if (lastRun) lastRun.textContent = w.last_run_time ? formatDate(w.last_run_time) : "Just initialized";
-
-        const toggleBtn = document.getElementById("toggleWatchdogBtn");
-        if (toggleBtn) {
-          toggleBtn.textContent = w.active ? "Pause Watchdog" : "Resume Watchdog";
-          toggleBtn.className = w.active ? "pill-btn danger" : "pill-btn primary";
-        }
       }
     } catch (e) {
       console.warn("Watchdog status error:", e);
@@ -2271,17 +2467,24 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function toggleWatchdog() {
-    const isPaused = document.getElementById("toggleWatchdogBtn")?.textContent.includes("Resume");
+    const isCurrentlyResume = document.getElementById("toggleWatchdogBtn")?.textContent.includes("Resume");
+    const willBeActive = isCurrentlyResume;
     const interval = parseInt(document.getElementById("watchdogIntervalSelect")?.value || "900");
+
+    // Immediately update local storage and UI
+    localStorage.setItem("darkweb_watchdog_active", willBeActive ? "true" : "false");
+    localStorage.setItem("darkweb_watchdog_interval", String(interval));
+    _applyWatchdogUI(willBeActive, Math.round(interval / 60), willBeActive ? "ARMED" : "PAUSED");
+
     try {
       const res = await apiFetch("/api/watchdog/toggle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: isPaused, interval_seconds: interval })
+        body: JSON.stringify({ enabled: willBeActive, interval_seconds: interval })
       });
       const data = await res.json();
       if (data.success) {
-        showToast(isPaused ? "✓ 24/7 Autonomous Watchdog resumed." : "Watchdog paused.", true);
+        showToast(willBeActive ? "✓ 24/7 Autonomous Watchdog resumed." : "Watchdog paused.", true);
         loadWatchdogStatus();
       }
     } catch (e) {
