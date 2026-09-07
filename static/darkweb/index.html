@@ -35,9 +35,10 @@
         🗑️ Clear Cache
       </button>
 
-      <div class="tor-badge" id="torStatusBadge">
+      <div class="tor-badge" id="torStatusBadge" onclick="window.openTorModal()" style="cursor:pointer;" title="Click to Connect Your Tor Network or Configure Proxy">
         <span class="pulse-dot"></span>
-        <span id="torStatusText">Checking Tor SOCKS5...</span>
+        <span id="torStatusText">Checking Tor Network...</span>
+        <span style="font-size:0.75rem;opacity:0.7;margin-left:4px;">⚙️</span>
       </div>
 
       <div class="watchdog-pill" id="watchdogHeaderPill" title="24/7 Darknet Watchdog Status">
@@ -765,7 +766,10 @@
             </div>
           </div>
 
-          <button id="refreshTorBtn" class="secondary-btn" style="margin-top: 1rem;">🔄 Refresh Tor Circuit</button>
+          <div style="display: flex; gap: 8px; margin-top: 1rem; flex-wrap: wrap;">
+            <button type="button" class="primary-btn" onclick="window.openTorModal()">🧅 Connect My Tor Network</button>
+            <button type="button" id="refreshTorBtn" class="secondary-btn">🔄 Refresh Circuit</button>
+          </div>
         </div>
 
         <!-- 24/7 Autonomous Sentinel Watchdog & Keyword Alerts Card -->
@@ -1330,6 +1334,75 @@
         <div style="display: flex; gap: 8px;">
           <button type="button" class="secondary-btn" onclick="window.closeBackendModal()">Cancel</button>
           <button type="button" class="primary-btn" onclick="window.testAndSaveBackend()">Test & Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONNECT YOUR TOR NETWORK / PROXY -->
+  <div id="torModal" class="modal-backdrop hidden">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.4rem;">🧅</span>
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem;">Connect Your Tor Network</h3>
+            <p class="text-sub" style="margin: 0; font-size: 0.78rem;">Route all onion searches, live recon, and monitoring through your Tor circuit</p>
+          </div>
+        </div>
+        <button class="close-modal-btn" onclick="window.closeTorModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 1.25rem 1.5rem;">
+        <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 8px; padding: 0.85rem; margin-bottom: 1.25rem;">
+          <div style="display: flex; align-items: flex-start; gap: 8px;">
+            <span style="font-size: 1.1rem; line-height: 1;">🛡️</span>
+            <p style="margin: 0; font-size: 0.82rem; color: var(--text-primary); line-height: 1.45;">
+              <strong>Zero Leakage:</strong> You can route all darknet operations through your personal Tor daemon, local Tor Browser (port 9150), or VPS proxy, ensuring total anonymity and independence from serverless restrictions.
+            </p>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.4rem;">Select Tor Routing Mode:</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <button type="button" id="torModeCustomBtn" class="secondary-btn active-mode" onclick="window.selectTorMode('custom')" style="text-align: left; padding: 0.6rem 0.8rem; font-size: 0.82rem;">
+              <strong>💻 Personal Tor Proxy</strong>
+              <div style="font-size: 0.72rem; opacity: 0.75;">Your local PC, VPS, or Tor Browser</div>
+            </button>
+            <button type="button" id="torModeGatewayBtn" class="secondary-btn" onclick="window.selectTorMode('tor2web')" style="text-align: left; padding: 0.6rem 0.8rem; font-size: 0.82rem;">
+              <strong>🌐 Cloud Gateway Relay</strong>
+              <div style="font-size: 0.72rem; opacity: 0.75;">Decentralized Tor2Web (Zero setup)</div>
+            </button>
+          </div>
+        </div>
+
+        <div id="torProxyInputGroup" class="form-group" style="margin-bottom: 1.2rem;">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">
+            Tor Proxy URL (SOCKS5h or HTTP):
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="torProxyInput" class="text-input" style="flex: 1; font-family: monospace; font-size: 0.85rem;" placeholder="socks5h://127.0.0.1:9050" />
+            <button type="button" id="testTorBtn" class="secondary-btn" onclick="window.testTorConnection()" style="white-space: nowrap;">
+              ⚡ Test Link
+            </button>
+          </div>
+          <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
+            <span style="font-size: 0.72rem; opacity: 0.7;">Presets:</span>
+            <button type="button" class="preset-pill" onclick="window.setTorPreset('socks5h://127.0.0.1:9050')">Tor Daemon (9050)</button>
+            <button type="button" class="preset-pill" onclick="window.setTorPreset('socks5h://127.0.0.1:9150')">Tor Browser (9150)</button>
+            <button type="button" class="preset-pill" onclick="window.setTorPreset('tor2web')">Tor2Web Cloud</button>
+          </div>
+        </div>
+
+        <div id="torTestResult" class="tor-test-box hidden" style="border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.82rem;"></div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem;">
+        <button type="button" class="secondary-btn" onclick="window.resetTorDefault()">Reset Default</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="secondary-btn" onclick="window.closeTorModal()">Cancel</button>
+          <button type="button" class="primary-btn" id="saveTorBtn" onclick="window.saveTorConfig()">💾 Save & Connect</button>
         </div>
       </div>
     </div>

@@ -133,6 +133,45 @@ body {
   padding: 0.4rem 0.85rem;
   border-radius: 999px;
   border: 1px solid var(--border-color);
+  transition: all var(--transition-speed);
+}
+
+.tor-badge:hover {
+  border-color: var(--accent-blue);
+  background: var(--bg-hover, rgba(59, 130, 246, 0.08));
+}
+
+.preset-pill {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition-speed);
+}
+.preset-pill:hover {
+  color: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+.active-mode {
+  border-color: var(--accent-blue) !important;
+  background: rgba(14, 165, 233, 0.12) !important;
+  color: var(--accent-blue) !important;
+}
+.tor-test-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  line-height: 1.5;
+}
+.tor-test-box.success {
+  border-color: var(--accent-green);
+  background: rgba(16, 185, 129, 0.08);
+}
+.tor-test-box.error {
+  border-color: var(--accent-red);
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .pulse-dot {

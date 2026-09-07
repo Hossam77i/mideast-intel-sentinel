@@ -17,6 +17,15 @@ if (window.location.hostname.includes("github.io")) {
 
 async function apiFetch(url, options = {}) {
   const fullUrl = (API_BASE && url.startsWith("/")) ? (API_BASE + url) : url;
+  options.headers = options.headers || {};
+  const userTorProxy = localStorage.getItem("darkweb_tor_proxy_url");
+  if (userTorProxy) {
+    if (options.headers instanceof Headers) {
+      options.headers.set("X-Tor-Proxy", userTorProxy);
+    } else {
+      options.headers["X-Tor-Proxy"] = userTorProxy;
+    }
+  }
   try {
     const res = await fetch(fullUrl, options);
     if (res.ok) {
@@ -127,6 +136,141 @@ window.testAndSaveBackend = async function() {
   }
 };
 // --- END CONNECTOR ---
+
+// --- TOR NETWORK PROXY & GATEWAY CONTROLLER ---
+const STORAGE_TOR_PROXY_KEY = "darkweb_tor_proxy_url";
+
+window.openTorModal = async function() {
+  const modal = document.getElementById("torModal");
+  const input = document.getElementById("torProxyInput");
+  const res = document.getElementById("torTestResult");
+  if (modal) modal.classList.remove("hidden");
+  if (res) { res.className = "tor-test-box hidden"; res.innerHTML = ""; }
+
+  const localSaved = localStorage.getItem(STORAGE_TOR_PROXY_KEY);
+  if (localSaved) {
+    if (input) input.value = localSaved;
+    window.selectTorMode(localSaved === "tor2web" ? "tor2web" : "custom");
+  } else {
+    try {
+      const resp = await apiFetch("/api/tor/config");
+      if (resp.ok) {
+        const cfg = await resp.json();
+        if (input) input.value = cfg.proxy_url || "socks5h://127.0.0.1:9050";
+        window.selectTorMode(cfg.mode === "tor2web" ? "tor2web" : "custom");
+      }
+    } catch (e) {
+      if (input) input.value = "socks5h://127.0.0.1:9050";
+    }
+  }
+};
+
+window.closeTorModal = function() {
+  const modal = document.getElementById("torModal");
+  if (modal) modal.classList.add("hidden");
+};
+
+window.selectTorMode = function(mode) {
+  const customBtn = document.getElementById("torModeCustomBtn");
+  const gatewayBtn = document.getElementById("torModeGatewayBtn");
+  const inputGroup = document.getElementById("torProxyInputGroup");
+  const input = document.getElementById("torProxyInput");
+
+  if (mode === "tor2web") {
+    if (gatewayBtn) gatewayBtn.classList.add("active-mode");
+    if (customBtn) customBtn.classList.remove("active-mode");
+    if (input) input.value = "tor2web";
+    if (inputGroup) inputGroup.style.opacity = "0.6";
+  } else {
+    if (customBtn) customBtn.classList.add("active-mode");
+    if (gatewayBtn) gatewayBtn.classList.remove("active-mode");
+    if (input && input.value === "tor2web") input.value = "socks5h://127.0.0.1:9050";
+    if (inputGroup) inputGroup.style.opacity = "1";
+  }
+};
+
+window.setTorPreset = function(preset) {
+  const input = document.getElementById("torProxyInput");
+  if (input) input.value = preset;
+  window.selectTorMode(preset === "tor2web" ? "tor2web" : "custom");
+};
+
+window.resetTorDefault = function() {
+  window.setTorPreset("socks5h://127.0.0.1:9050");
+  const res = document.getElementById("torTestResult");
+  if (res) { res.className = "tor-test-box hidden"; res.innerHTML = ""; }
+};
+
+window.testTorConnection = async function() {
+  const input = document.getElementById("torProxyInput");
+  const res = document.getElementById("torTestResult");
+  const proxy = input ? input.value.trim() : "socks5h://127.0.0.1:9050";
+
+  if (res) {
+    res.className = "tor-test-box";
+    res.innerHTML = `⏳ Testing connection to Tor Network via <code>${proxy}</code>...`;
+  }
+
+  try {
+    const resp = await apiFetch("/api/tor/status?proxy_url=" + encodeURIComponent(proxy), {
+      method: "GET"
+    });
+    const data = await resp.json();
+    if (data.success && data.is_tor) {
+      if (res) {
+        res.className = "tor-test-box success";
+        res.innerHTML = `
+          <div style="font-weight:600;color:var(--accent-green);margin-bottom:4px;">🟢 Tor Circuit Verified & Operational!</div>
+          <div><strong>Routing Mode:</strong> ${data.mode || 'Active'}</div>
+          <div><strong>Exit Relay IP:</strong> <code>${data.exit_ip || 'Hidden Relay'}</code></div>
+          <div><strong>Tor Latency:</strong> <code>${data.latency_ms} ms</code></div>
+        `;
+      }
+    } else {
+      if (res) {
+        res.className = "tor-test-box error";
+        res.innerHTML = `
+          <div style="font-weight:600;color:var(--accent-red);margin-bottom:4px;">🔴 Tor Connection Failed</div>
+          <div style="margin-bottom:4px;"><strong>Diagnostic:</strong> ${data.error || 'Connection timed out'}</div>
+          <div style="font-size:0.75rem;opacity:0.85;">💡 <em>${data.tip || 'Tip: If using local Tor Browser, set to socks5h://127.0.0.1:9150, or choose Tor2Web Cloud Gateway.'}</em></div>
+        `;
+      }
+    }
+  } catch (err) {
+    if (res) {
+      res.className = "tor-test-box error";
+      res.innerHTML = `<div style="font-weight:600;color:var(--accent-red);">🔴 Error querying backend:</div> ${err.message}`;
+    }
+  }
+};
+
+window.saveTorConfig = async function() {
+  const input = document.getElementById("torProxyInput");
+  const saveBtn = document.getElementById("saveTorBtn");
+  const proxy = input ? input.value.trim() : "socks5h://127.0.0.1:9050";
+
+  if (saveBtn) saveBtn.textContent = "Saving...";
+
+  try {
+    localStorage.setItem(STORAGE_TOR_PROXY_KEY, proxy);
+    await apiFetch("/api/tor/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proxy_url: proxy })
+    });
+    showToast(`✓ Tor Network configured: ${proxy}`, true);
+    window.closeTorModal();
+    if (typeof checkTorStatus === "function") checkTorStatus();
+  } catch (err) {
+    localStorage.setItem(STORAGE_TOR_PROXY_KEY, proxy);
+    showToast(`✓ Saved locally: ${proxy}`, true);
+    window.closeTorModal();
+    if (typeof checkTorStatus === "function") checkTorStatus();
+  } finally {
+    if (saveBtn) saveBtn.textContent = "💾 Save & Connect";
+  }
+};
+// --- END TOR NETWORK CONTROLLER ---
 
 /**
  * Egypt Black Wolf | Dark Web Sentinel v2.1
@@ -637,32 +781,36 @@ document.addEventListener("DOMContentLoaded", () => {
     const infoExitIp = document.getElementById("torInfoExitIp");
     const infoLatency = document.getElementById("torInfoLatency");
 
-    if (text) text.textContent = "Probing Tor Circuit...";
+    if (text) text.textContent = "Checking Tor Circuit...";
 
     try {
       const res = await apiFetch("/api/tor/status");
       const data = await res.json();
       if (data.success && data.is_tor) {
         if (badge) badge.className = "tor-badge operational";
-        if (text) text.textContent = `Tor SOCKS5h Online (${data.latency_ms}ms)`;
+        const label = data.proxy_url === "tor2web" ? "Tor2Web Relay" : (data.mode && data.mode.includes("Personal") ? "My Tor Proxy" : "Tor Online");
+        if (text) text.textContent = `${label} (${data.latency_ms}ms)`;
         if (cardBadge) {
           cardBadge.textContent = "Operational";
           cardBadge.className = "badge badge-success";
         }
-        if (infoRouting) infoRouting.textContent = "Active (socks5h://127.0.0.1:9050)";
+        if (infoRouting) infoRouting.textContent = `Active (${data.proxy_url || "socks5h://127.0.0.1:9050"})`;
         if (infoExitIp) infoExitIp.textContent = data.exit_ip || "Tor Exit Node Active";
         if (infoLatency) infoLatency.textContent = `${data.latency_ms} ms`;
       } else {
         if (badge) badge.className = "tor-badge degraded";
-        if (text) text.textContent = "Tor SOCKS5h Degraded / Offline";
+        if (text) text.textContent = "Tor Offline (Click to Connect)";
         if (cardBadge) {
           cardBadge.textContent = "Offline";
           cardBadge.className = "badge badge-danger";
         }
+        if (infoRouting) infoRouting.textContent = "Offline (Click Connect My Tor Network)";
+        if (infoExitIp) infoExitIp.textContent = "None";
+        if (infoLatency) infoLatency.textContent = "-- ms";
       }
     } catch (e) {
       if (badge) badge.className = "tor-badge degraded";
-      if (text) text.textContent = "Tor Connection Offline";
+      if (text) text.textContent = "Tor Offline (Click to Connect)";
     }
   }
 
