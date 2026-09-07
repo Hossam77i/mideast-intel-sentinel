@@ -972,19 +972,17 @@ mark {
   height: 100vh;
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
-  display: none;
+  display: none !important;
   justify-content: center;
   align-items: center;
   z-index: 200;
 }
 
 .modal-backdrop.open,
-.modal-backdrop.active,
-.modal-backdrop:not(.hidden) {
+.modal-backdrop.active {
   display: flex !important;
 }
 
-.modal-backdrop.hidden,
 .hidden {
   display: none !important;
 }
