@@ -78,7 +78,7 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
             content={
                 "error": "Not Found",
                 "scope_path": request.scope.get("path"),
-                "headers": dict(request.headers)
+                "scope_keys": {k: str(v) for k, v in request.scope.items() if k != "headers"}
             }
         )
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
