@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SENTINEL // Middle East Intelligence & Forecast Network</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./vis-network.min.js"></script>
+</head>
+<body>
+  <!-- Top Navigation Header -->
+  <header class="top-header">
+    <div class="header-left">
+      <div class="brand-icon">
+        <span>🛡️</span>
+      </div>
+      <div>
+        <div class="brand-title">SENTINEL <span class="text-cyan-400 font-normal">OSINT</span></div>
+        <div class="brand-subtitle">Egypt • Iran • Israel • Germany Threat Monitor</div>
+      </div>
+    </div>
+
+    <!-- Header Controls: Public Link, Profile, Theme Toggle, Actions -->
+    <div class="header-controls">
+      <!-- Public Share Link for Friends -->
+      <div id="public-link-container" class="public-link-pill hidden">
+        <span>🌐 <b>Shareable:</b></span>
+        <a id="public-link-url" href="#" target="_blank" rel="noopener noreferrer">Public Link</a>
+        <button class="btn-copy-mini" onclick="copyPublicLink()">Copy</button>
+      </div>
+
+      <!-- User Identification (Isolated Settings) -->
+      <div class="user-profile-pill" onclick="openProfileModal()" title="Click to switch profile">
+        <span>👤</span>
+        <span>Profile: <span id="header-username" class="user-name">Hossam</span></span>
+      </div>
+
+      <!-- Darknet Sentinel Portal Switch -->
+      <a href="http://localhost:8080" id="darkweb-sentinel-link" target="_blank" class="nav-switch-btn" title="Switch to Egypt Black Wolf Darknet Sentinel">
+        <span>🐺</span> Darknet Sentinel (8080)
+      </a>
+
+      <!-- Backend Connection Pill -->
+      <div id="backendPill" class="nav-switch-btn" onclick="openBackendModal()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="Configure Live Backend URL">
+        <span class="pulse-dot green" id="backendPillDot" style="width:8px;height:8px;"></span>
+        <span id="backendPillText">Backend: Online</span>
+        <span style="font-size:0.75rem;opacity:0.6;">⚙️</span>
+      </div>
+
+      <!-- Dark / Light Mode Toggle -->
+      <button class="btn-theme-toggle" id="btn-theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+        <span id="theme-icon">☀️</span> <span id="theme-text">Light</span>
+      </button>
+
+      <!-- Scan & Test Alert -->
+      <button class="btn btn-primary btn-xs" id="btn-force-scan" onclick="triggerIngestion()">
+        <span>⚡</span> Scan Feeds
+      </button>
+      <button class="btn btn-secondary btn-xs" onclick="openTestModal()">
+        <span>📲</span> Test Alert
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-bar">
+    <button class="nav-tab active" data-tab="tab-feed" onclick="switchTab('tab-feed')">
+      <span>📡</span> Intelligence Feed
+    </button>
+    <button class="nav-tab" data-tab="tab-graph" onclick="switchTab('tab-graph')">
+      <span>🕸️</span> Knowledge & Forecast Graph
+    </button>
+    <button class="nav-tab" data-tab="tab-forecasts" onclick="switchTab('tab-forecasts')">
+      <span>🔮</span> Causal Chains & Forecasts
+    </button>
+    <button class="nav-tab" data-tab="tab-dossiers" onclick="switchTab('tab-dossiers')">
+      <span>🌍</span> Country Dossiers
+    </button>
+    <button class="nav-tab" data-tab="tab-settings" onclick="switchTab('tab-settings')">
+      <span>⚙️</span> Personal Settings
+    </button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    
+    <!-- Unified Filter & Range Toolbar -->
+    <div class="toolbar-card">
+      <!-- TIME FILTER (CUSTOM RANGE & PRESETS) -->
+      <div class="filter-group time-filter">
+        <label>🕒 Time Range:</label>
+        <select id="filter-year-mode" onchange="handleTimeModeChange()">
+          <option value="2026" selected>2026 (Live Current)</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024 (Missile Barrages / Red Sea)</option>
+          <option value="2023">2023 (War Outbreak / Regional)</option>
+          <option value="2022">2022 (Russia-Iran / Pre-war)</option>
+          <option value="All">All Archives (2022 - Present)</option>
+          <option value="custom">Custom Year Range...</option>
+        </select>
+      </div>
+
+      <!-- CUSTOM RANGE INPUTS (TOGGLED) -->
+      <div id="custom-range-container" class="filter-group flex items-center gap-2 hidden">
+        <div>
+          <label>From Year:</label>
+          <input type="number" id="input-from-year" placeholder="e.g. 2020" min="2000" max="2030" style="width: 90px;" />
+        </div>
+        <div>
+          <label>To Year:</label>
+          <input type="number" id="input-to-year" placeholder="e.g. 2025" min="2000" max="2030" style="width: 90px;" />
+        </div>
+        <button class="btn btn-primary btn-xs mt-auto" onclick="applyCustomRange()">Apply Range</button>
+      </div>
+
+      <!-- SORT / REARRANGE ORDER FILTER -->
+      <div class="filter-group">
+        <label>📊 Sort Order:</label>
+        <select id="filter-order-by" onchange="handleSortChange()">
+          <option value="time_desc" selected>🕒 Most Recent First (Default)</option>
+          <option value="time_asc">⏳ Oldest First (Chronological)</option>
+          <option value="severity_desc">🚨 Highest Severity First (100 - 0)</option>
+          <option value="severity_asc">📉 Lowest Severity First</option>
+          <option value="country">🌍 By Country / Axis</option>
+        </select>
+      </div>
+
+      <!-- THEATRE / COUNTRY FILTER -->
+      <div class="filter-group">
+        <label>Theatre / Axis:</label>
+        <select id="filter-country" onchange="resetAndReloadArticles()">
+          <option value="All">All Theatres</option>
+          <option value="Iran">🇮🇷 Iran</option>
+          <option value="Israel">🇮🇱 Israel</option>
+          <option value="Egypt">🇪🇬 Egypt</option>
+          <option value="Germany">🇩🇪 Germany</option>
+          <option value="Iran / Israel">⚔️ Iran / Israel Axis</option>
+          <option value="Egypt / Israel">🤝 Egypt / Israel Axis</option>
+          <option value="Germany / Middle East">🇩🇪 Germany / ME</option>
+        </select>
+      </div>
+
+      <!-- CATEGORY FILTER -->
+      <div class="filter-group">
+        <label>Category:</label>
+        <select id="filter-category" onchange="resetAndReloadArticles()">
+          <option value="All">All Disciplines</option>
+          <option value="Warfare">⚔️ Warfare / Kinetic</option>
+          <option value="Intelligence">🕵️ Intelligence / Covert</option>
+          <option value="Nuclear">☢️ Nuclear & Proliferation</option>
+          <option value="Cyber">💻 Cyber & Electronic Ops</option>
+          <option value="Arms">🚀 Arms & Air Defense</option>
+          <option value="Diplomacy">🕊️ Diplomacy & Sanctions</option>
+        </select>
+      </div>
+
+      <!-- URGENCY FILTER -->
+      <div class="filter-group">
+        <label>Min Urgency:</label>
+        <select id="filter-urgency" onchange="resetAndReloadArticles()">
+          <option value="0">All Items</option>
+          <option value="55">High & Critical (55+)</option>
+          <option value="75">Critical Flash Only (75+)</option>
+        </select>
+      </div>
+
+      <!-- SEARCH INPUT -->
+      <div class="filter-group flex-1">
+        <label>Search Wire & Archives:</label>
+        <input type="text" id="filter-search" placeholder="Search missiles, agencies, treaties..." onkeyup="handleSearchKey(event)" />
+      </div>
+
+      <div class="flex items-center gap-2 mt-auto">
+        <button class="btn btn-outline" onclick="resetAndReloadArticles()">Filter</button>
+        <button class="btn btn-secondary" onclick="fetchHistoricalArchives()" title="Query Google News and global archives for this time period">
+          <span>🔍</span> Query Archive
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Time Notification Banner -->
+    <div id="active-time-banner" class="active-time-banner hidden">
+      <div>
+        <span>🕒 Currently viewing intelligence for: <b id="banner-year-text" class="text-cyan-400">All</b></span>
+        <span class="text-xs text-slate-400 ml-2" id="banner-count-text"></span>
+      </div>
+      <button class="btn btn-outline btn-xs" onclick="resetToLiveTime()">Reset to Live (2026)</button>
+    </div>
+
+    <!-- TAB 1: LIVE FEED & ARCHIVES -->
+    <section id="tab-feed" class="tab-pane active">
+      <div id="articles-container" class="articles-grid">
+        <div class="loading-state text-slate-400 py-12 text-center col-span-full">Querying real-time wire dispatches...</div>
+      </div>
+
+      <!-- "LOAD MORE / PREVIOUS NEWS" BUTTON -->
+      <div class="load-more-section text-center py-6 mt-4">
+        <button id="btn-load-more" class="btn btn-secondary btn-load-more" onclick="loadMoreArticles()">
+          <span>⬇️</span> Show Previous News / Load More
+        </button>
+        <div id="load-more-status" class="text-xs text-slate-400 mt-2"></div>
+      </div>
+
+      <!-- Major News Sites & OSINT Search Hub -->
+      <div class="osint-hub-card">
+        <div class="flex items-center gap-2">
+          <span class="font-semibold text-xs text-cyan-400">🔎 GLOBAL OSINT & NEWS NETWORK:</span>
+          <span class="text-xs text-slate-400">Direct search access across major wires & tracking networks:</span>
+        </div>
+        <div class="osint-links">
+          <a class="osint-badge-link" href="https://news.google.com" target="_blank" id="osint-google">Google News</a>
+          <a class="osint-badge-link" href="https://www.reuters.com/world/middle-east/" target="_blank">Reuters Wire</a>
+          <a class="osint-badge-link" href="https://www.bbc.com/news/world/middle_east" target="_blank">BBC Middle East</a>
+          <a class="osint-badge-link" href="https://www.dw.com/en/middle-east/s-14249" target="_blank">Deutsche Welle</a>
+          <a class="osint-badge-link" href="https://www.timesofisrael.com" target="_blank">Times of Israel</a>
+          <a class="osint-badge-link" href="https://www.aljazeera.com/middle-east/" target="_blank">Al Jazeera</a>
+          <a class="osint-badge-link" href="https://english.ahram.org.eg" target="_blank">Ahram Online</a>
+          <a class="osint-badge-link" href="https://www.flightradar24.com" target="_blank">FlightRadar24</a>
+          <a class="osint-badge-link" href="https://www.marinetraffic.com" target="_blank">MarineTraffic Red Sea</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: KNOWLEDGE & FORECAST GRAPH -->
+    <section id="tab-graph" class="tab-pane">
+      <div class="graph-layout">
+        <div class="graph-viewport-card">
+          <div class="graph-controls-bar">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-xs text-cyan-400">GRAPH CONTROLS:</span>
+              <select id="graph-filter-country" onchange="refreshGraph()">
+                <option value="All">All Regions</option>
+                <option value="Iran">Iran</option>
+                <option value="Israel">Israel</option>
+                <option value="Egypt">Egypt</option>
+                <option value="Germany">Germany</option>
+              </select>
+              <select id="graph-filter-type" onchange="refreshGraph()">
+                <option value="All">All Layers</option>
+                <option value="past">🏛️ Past Precedents</option>
+                <option value="current">⚡ Incidents</option>
+                <option value="future">🔮 Forecasts</option>
+                <option value="entity">🎯 State Actors & Intel Agencies</option>
+              </select>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <button class="btn btn-xs btn-outline" onclick="fitGraph()">Fit View</button>
+              <button class="btn btn-xs btn-outline" onclick="togglePhysics()" id="btn-toggle-physics">Freeze Physics</button>
+            </div>
+          </div>
+
+          <!-- Legend Bar -->
+          <div class="graph-legend">
+            <span class="legend-item"><span class="legend-dot bg-indigo-500"></span> 🏛️ Past Precedent</span>
+            <span class="legend-item"><span class="legend-dot bg-cyan-400"></span> 🎯 State / Intel Agency (Mossad, IRGC, GIS, BND)</span>
+            <span class="legend-item"><span class="legend-dot bg-rose-500"></span> 🔴 Alert (Critical)</span>
+            <span class="legend-item"><span class="legend-dot bg-amber-500"></span> 🟠 Alert (High)</span>
+            <span class="legend-item"><span class="legend-dot bg-yellow-400"></span> 🔮 Future Strategic Projection</span>
+          </div>
+
+          <div id="network-container" class="network-container"></div>
+        </div>
+
+        <!-- Node Inspector Sidebar -->
+        <aside class="node-inspector-card" id="node-inspector">
+          <div class="inspector-header">
+            <h3>NODE DOSSIER</h3>
+            <span class="text-xs text-slate-400" id="inspector-type">SELECT NODE</span>
+          </div>
+          <div class="inspector-body" id="inspector-content">
+            <div class="text-center text-slate-500 py-12">
+              <span class="text-3xl">🕸️</span>
+              <p class="mt-2 text-xs">Click any node to inspect causality, intelligence links, and projected downstream risks.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- TAB 3: CAUSAL CHAINS & FUTURE FORECASTS -->
+    <section id="tab-forecasts" class="tab-pane">
+      <div class="forecasts-header mb-4">
+        <h2 class="text-base font-bold text-white">CONNECTING PAST, PRESENT & FUTURE</h2>
+        <p class="text-xs text-slate-400">Algorithmic causal trajectory linking historical precedents through breaking triggers to forecasted downstream risks.</p>
+      </div>
+      <div id="causal-chains-container" class="causal-chains-list">
+        <div class="loading-state text-slate-400 py-12 text-center">Synthesizing Causal Threat Chains...</div>
+      </div>
+    </section>
+
+    <!-- TAB 4: COUNTRY DOSSIERS -->
+    <section id="tab-dossiers" class="tab-pane">
+      <div class="dossiers-grid">
+        <!-- IRAN -->
+        <div class="dossier-card">
+          <div class="dossier-header">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-rose-400">🇮🇷 IRAN (ISLAMIC REPUBLIC)</h3>
+              <span class="badge badge-critical">THREAT: SEVERE</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Tehran Command • IRGC & Quds Force • AEOI Nuclear</p>
+          </div>
+          <div class="dossier-body">
+            <div class="dossier-metric">
+              <span class="label">Primary Intelligence Agencies:</span>
+              <span class="value">IRGC Intelligence Org, MOIS (Vaja), Quds Cyber Unit</span>
+            </div>
+            <div class="dossier-metric">
+              <span class="label">Active Strategic Flashpoints:</span>
+              <span class="value">Fordow & Natanz Centrifuges, Strait of Hormuz, Ballistic Missiles (Fattah, Khorramshahr)</span>
+            </div>
+            <div class="dossier-metric">
+              <span class="label">Current Operational Posture:</span>
+              <span class="value text-rose-300">High ballistic readiness, asymmetric naval deterrence, proxy force coordination.</span>
+            </div>
+            <button class="btn btn-outline btn-xs mt-2 w-full" onclick="filterByCountryDossier('Iran')">View Iran Wire</button>
+          </div>
+        </div>
+
+        <!-- ISRAEL -->
+        <div class="dossier-card">
+          <div class="dossier-header">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-cyan-400">🇮🇱 ISRAEL (STATE OF ISRAEL)</h3>
+              <span class="badge badge-critical">ALERT: ELEVATED</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Tel Aviv / Kirya • Mossad • IDF General Staff • Shin Bet</p>
+          </div>
+          <div class="dossier-body">
+            <div class="dossier-metric">
+              <span class="label">Primary Intelligence Agencies:</span>
+              <span class="value">Mossad (Foreign Covert Ops), Shin Bet / Shabak (Internal), Aman (Military Intel), Unit 8200 (SIGINT)</span>
+            </div>
+            <div class="dossier-metric">
+              <span class="label">Multi-Tier Air Defense Array:</span>
+              <span class="value">Iron Dome (C-RAM), David's Sling (Medium Range), Arrow-2/3 (Exo-atmospheric Ballistic)</span>
+            </div>
+            <div class="dossier-metric">
+              <span class="label">Current Operational Posture:</span>
+              <span class="value text-cyan-300">Continuous precision strikes, northern border deterrence, deep covert asset operations.</span>
+            </div>
+            <button class="btn btn-outline btn-xs mt-2 w-full" onclick="filterByCountryDossier('Israel')">View Israel Wire</button>
+          </div>
+        </div>
+
+        <!-- EGYPT -->
+        <div class="dossier-card">
+          <div class="dossier-header">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-amber-400">🇪🇬 EGYPT (ARAB REPUBLIC OF EGYPT)</h3>
+              <span class="badge badge-high">BORDER: HEIGHTENED</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Cairo Command • GIS (General Intelligence) • Armed Forces</p>
+          </div>
+          <div class="dossier-body">
+            <div class="dossier-metric">
+              <span class="label">Primary Intelligence Agencies:</span>
+              <span class="value">GIS (Mukhabarat Amma), Military Intelligence (Mukhabarat al-Harbiyya), National Security</span>
+            </div>
+            <div class="dossier-metric">
+              <span class="label">Strategic Geographic Chokepoints:</span>
+              <span class="value">Suez Canal, Bab al-Mandab Red Sea maritime escort, Sinai Buffer Zones, Rafah Crossing</span>
+            </div>
+            <div class="dossier-metric">
+              <span class="label">Current Operational Posture:</span>
+              <span class="value text-amber-300">Active regional peace diplomacy, border fortification, joint naval patrols against maritime threats.</span>
+            </div>
+            <button class="btn btn-outline btn-xs mt-2 w-full" onclick="filterByCountryDossier('Egypt')">View Egypt Wire</button>
+          </div>
+        </div>
+
+        <!-- GERMANY -->
+        <div class="dossier-card">
+          <div class="dossier-header">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-sky-400">🇩🇪 GERMANY (FEDERAL REPUBLIC)</h3>
+              <span class="badge badge-medium">POSTURE: ACTIVE</span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Berlin / Chancellery • BND (Foreign Intel) • Auswärtiges Amt</p>
+          </div>
+          <div class="dossier-body">
+            <div class="dossier-metric">
+              <span class="label">Primary Intelligence Agencies:</span>
+              <span class="value">BND (Bundesnachrichtendienst), MAD (Military Counterintelligence), BfV</span>
+            </div>
+            <div class="dossier-metric">
+              <span class="label">Strategic Focus & Defense Ties:</span>
+              <span class="value">Arrow-3 Strategic Procurement from Israel, EU Sanctions Oversight, Red Sea Aspides Naval Escorts</span>
+            </div>
+            <div class="dossier-metric">
+              <span class="label">Current Operational Posture:</span>
+              <span class="value text-sky-300">Interdicting Iranian dual-use component supply chains; leading EU maritime security contingents.</span>
+            </div>
+            <button class="btn btn-outline btn-xs mt-2 w-full" onclick="filterByCountryDossier('Germany')">View Germany Wire</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: PERSONAL SETTINGS & PHONE ALERTS -->
+    <section id="tab-settings" class="tab-pane">
+      <div class="settings-container">
+        <!-- Shareable Link Card -->
+        <div class="settings-card col-span-2">
+          <div class="settings-card-header">
+            <h3>🌐 Public Share Link for Friends</h3>
+            <span class="text-xs text-emerald-400">Live & Free</span>
+          </div>
+          <div class="settings-card-body">
+            <p class="text-xs text-slate-300">
+              Share this link with friends so they can access the live dashboard from their phone or computer. Each user's personal settings are isolated by their name:
+            </p>
+            <div class="flex items-center gap-2 mt-1">
+              <input type="text" id="share-link-input" class="flex-1 font-mono text-xs" readonly />
+              <button class="btn btn-primary" onclick="copyPublicLink()">Copy Link</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Telegram Configuration Card (Credentials Masked & Protected) -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h3>📲 Telegram Phone Alerts (<span id="settings-username-label">Hossam</span>)</h3>
+            <span class="text-xs text-cyan-400">Private Profile Settings</span>
+          </div>
+          <div class="settings-card-body">
+            <div class="flex items-center justify-between">
+              <p class="text-xs text-slate-400">Credentials are secured and masked per profile.</p>
+              <span id="tg-token-badge" class="badge badge-medium hidden">✓ Configured</span>
+            </div>
+
+            <div class="form-group">
+              <label>Enable Phone Alerts:</label>
+              <input type="checkbox" id="setting-tg-enabled" />
+            </div>
+
+            <div class="form-group">
+              <label>Telegram Bot Token:</label>
+              <div class="flex items-center gap-2">
+                <input type="password" id="setting-tg-token" class="flex-1" placeholder="Enter Bot Token (Hidden for security)" autocomplete="off" />
+                <button type="button" class="btn btn-outline btn-xs" onclick="toggleTokenVisibility('setting-tg-token', this)">👁️ Show</button>
+              </div>
+              <span class="help-text">Your bot token is masked for security and never displayed in public links.</span>
+            </div>
+
+            <div class="form-group">
+              <label>Your Telegram Chat ID:</label>
+              <input type="text" id="setting-tg-chatid" placeholder="Enter your numerical Chat ID" />
+            </div>
+
+            <div class="flex gap-2 mt-3">
+              <button class="btn btn-primary" onclick="saveSettings()">Save My Settings</button>
+              <button class="btn btn-secondary" onclick="testTelegramAlert()">Send Test to My Phone</button>
+            </div>
+            <div id="test-tg-result" class="mt-2 text-xs"></div>
+          </div>
+        </div>
+
+        <!-- Urgency & Polling Controls -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h3>⚡ Alert Urgency & Polling</h3>
+            <span class="text-xs text-emerald-400">Automated 24/7 Monitor</span>
+          </div>
+          <div class="settings-card-body">
+            <div class="form-group">
+              <label>Min Urgency Score for Phone Push (0 - 100):</label>
+              <div class="flex items-center gap-3">
+                <input type="range" id="setting-urgency-threshold" min="30" max="95" step="5" oninput="document.getElementById('urgency-val').innerText = this.value" />
+                <span id="urgency-val" class="font-bold text-rose-400">75</span>
+              </div>
+              <span class="help-text">75+ alerts for Critical Flashes only (Missile attacks, assassinations, nuclear events).</span>
+            </div>
+
+            <div class="form-group">
+              <label>Background Polling Interval (Minutes):</label>
+              <select id="setting-poll-interval">
+                <option value="2">Every 2 Minutes (Ultra-Fast Flash)</option>
+                <option value="5">Every 5 Minutes (Tactical Rapid)</option>
+                <option value="10" selected>Every 10 Minutes (Balanced)</option>
+                <option value="30">Every 30 Minutes</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>24/7 System Service:</label>
+              <div class="flex items-center gap-2">
+                <span class="badge badge-low text-emerald-400">RUNNING AS SYSTEMD SERVICE</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notifications History Table -->
+        <div class="settings-card col-span-2">
+          <div class="settings-card-header">
+            <h3>📋 Notification Dispatch History</h3>
+          </div>
+          <div class="settings-card-body overflow-x-auto">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Channel</th>
+                  <th>Status</th>
+                  <th>Urgency</th>
+                  <th>Headline Preview</th>
+                </tr>
+              </thead>
+              <tbody id="notifications-table-body">
+                <tr><td colspan="5" class="text-center py-4 text-slate-500">No phone dispatches yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- User Profile Name Modal -->
+  <div id="profile-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="text-sm font-bold text-white">👤 Select or Switch User Profile</h3>
+        <button class="modal-close" onclick="closeProfileModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-xs text-slate-300">
+          Enter your name so your personal phone alerts and settings are kept separate from other users:
+        </p>
+        <div class="form-group">
+          <label>Your Name / Profile Name:</label>
+          <input type="text" id="input-profile-username" placeholder="e.g. Hossam, Karim, Alex" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="confirmUserProfile()">Switch to This Profile</button>
+        <button class="btn btn-outline" onclick="closeProfileModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Test Alert Modal (Credentials Masked) -->
+  <div id="test-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="text-sm font-bold text-white">📱 Dispatch Test Notification to Your Phone</h3>
+        <button class="modal-close" onclick="closeTestModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-xs text-slate-300 mb-2">
+          Ensure you have clicked <b>"Start"</b> on <a href="https://t.me/AClNews18766bot" target="_blank" class="text-cyan-400 underline">@AClNews18766bot</a> first!
+        </p>
+        <div class="form-group">
+          <label>Bot Token:</label>
+          <div class="flex items-center gap-2">
+            <input type="password" id="quick-tg-token" class="flex-1" placeholder="Bot Token (Masked)" autocomplete="off" />
+            <button type="button" class="btn btn-outline btn-xs" onclick="toggleTokenVisibility('quick-tg-token', this)">👁️</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Chat ID:</label>
+          <input type="text" id="quick-tg-chatid" placeholder="Your Chat ID" />
+        </div>
+        <div id="quick-test-result" class="text-xs mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="runQuickTest()">Send Test Alert</button>
+        <button class="btn btn-outline" onclick="closeTestModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backend Configuration Modal -->
+  <div id="backendModal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="text-sm font-bold text-white">⚡ Sentinel Backend Connection</h3>
+        <button class="modal-close" onclick="closeBackendModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem 1.5rem;">
+        <p class="text-xs text-slate-300" style="margin-bottom: 1rem;">
+          When accessing from GitHub Pages or remote devices, configure the live Cloudflare Tunnel URL pointing to your Sentinel backend server.
+        </p>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="text-xs font-semibold block mb-1">Live Backend API URL:</label>
+          <input type="text" id="backendUrlInput" style="width: 100%;" placeholder="https://xxxx.trycloudflare.com" />
+        </div>
+        <div id="backendPingResult" style="font-size: 0.82rem; min-height: 24px; padding: 4px 0;"></div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem;">
+        <button type="button" class="btn btn-outline" onclick="resetBackendDefault()">Reset Default</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-outline" onclick="closeBackendModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="testAndSaveBackend()">Test & Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
