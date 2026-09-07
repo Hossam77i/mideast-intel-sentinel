@@ -68,6 +68,21 @@ async def fix_vercel_rewrites(request: Request, call_next):
         request.scope["path"] = matched_path
     return await call_next(request)
 
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "Not Found",
+                "scope_path": request.scope.get("path"),
+                "headers": dict(request.headers)
+            }
+        )
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     import traceback
