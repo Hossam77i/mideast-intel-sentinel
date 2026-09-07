@@ -12,6 +12,7 @@ app_port: 7860
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Hossam77i/mideast-intel-sentinel)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FHossam77i%2Fmideast-intel-sentinel)
 
 **Middle East Intelligence Sentinel** is an automated, lifetime threat intelligence tracking, analysis, and forecasting platform. It focuses specifically on military developments, wars, covert actions, and intelligence operations involving:
 - 🇮🇷 **Iran** (IRGC, Quds Force, nuclear centrifuges, ballistic & drone arsenals, proxy coordination)
