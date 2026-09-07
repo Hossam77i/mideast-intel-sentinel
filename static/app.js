@@ -1207,8 +1207,8 @@ async function loadSettings() {
       if (tokenBadge) tokenBadge.classList.add("hidden");
     }
 
-    document.getElementById("setting-urgency-threshold").value = s.urgency_threshold || 75;
-    document.getElementById("urgency-val").innerText = s.urgency_threshold || 75;
+    document.getElementById("setting-urgency-threshold").value = s.urgency_threshold || 65;
+    document.getElementById("urgency-val").innerText = s.urgency_threshold || 65;
     document.getElementById("setting-poll-interval").value = s.poll_interval_minutes || 10;
 
     try {

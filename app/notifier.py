@@ -144,12 +144,12 @@ def send_email_alert(smtp_host, smtp_port, sender, password, recipient, subject,
 def dispatch_urgent_alerts() -> dict:
     """Check for new urgent articles and send notifications immediately."""
     settings = get_settings()
-    threshold = int(settings.get("urgency_threshold", "75"))
+    threshold = int(settings.get("urgency_threshold", "65"))
     telegram_enabled = settings.get("telegram_enabled", "false").lower() == "true"
     email_enabled = settings.get("email_enabled", "false").lower() == "true"
 
-    bot_token = settings.get("telegram_bot_token", "")
-    chat_id = settings.get("telegram_chat_id", "")
+    bot_token = settings.get("telegram_bot_token", "8447880856:AAGOaLR_4542pG0kqkwPUbjOC2PXLqUryOs")
+    chat_id = settings.get("telegram_chat_id", "7195584903")
 
     smtp_host = settings.get("email_smtp_host", "")
     smtp_port = settings.get("email_smtp_port", "587")

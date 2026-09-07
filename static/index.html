@@ -159,7 +159,8 @@
         <label>Min Urgency:</label>
         <select id="filter-urgency" onchange="resetAndReloadArticles()">
           <option value="0">All Items</option>
-          <option value="55">High & Critical (55+)</option>
+          <option value="55">Elevated (55+)</option>
+          <option value="65">Urgent Alert Level (65+)</option>
           <option value="75">Critical Flash Only (75+)</option>
         </select>
       </div>
@@ -467,10 +468,10 @@
             <div class="form-group">
               <label>Min Urgency Score for Phone Push (0 - 100):</label>
               <div class="flex items-center gap-3">
-                <input type="range" id="setting-urgency-threshold" min="30" max="95" step="5" oninput="document.getElementById('urgency-val').innerText = this.value" />
-                <span id="urgency-val" class="font-bold text-rose-400">75</span>
+                <input type="range" id="setting-urgency-threshold" min="30" max="95" step="5" value="65" oninput="document.getElementById('urgency-val').innerText = this.value" />
+                <span id="urgency-val" class="font-bold text-rose-400">65</span>
               </div>
-              <span class="help-text">75+ alerts for Critical Flashes only (Missile attacks, assassinations, nuclear events).</span>
+              <span class="help-text">65+ alerts for High & Critical events (Missile strikes, naval interdictions, state escalations, cyber attacks).</span>
             </div>
 
             <div class="form-group">

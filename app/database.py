@@ -142,7 +142,7 @@ def init_db():
         telegram_enabled INTEGER DEFAULT 1,
         email_recipient TEXT DEFAULT '',
         email_enabled INTEGER DEFAULT 0,
-        urgency_threshold INTEGER DEFAULT 75,
+        urgency_threshold INTEGER DEFAULT 65,
         poll_interval_minutes INTEGER DEFAULT 10,
         theme_preference TEXT DEFAULT 'dark',
         created_at TEXT
@@ -172,7 +172,7 @@ def init_db():
         "8447880856:AAGOaLR_4542pG0kqkwPUbjOC2PXLqUryOs",
         "7195584903",
         1,
-        75,
+        65,
         datetime.now(timezone.utc).isoformat()
     ))
 
@@ -181,7 +181,7 @@ def init_db():
         "telegram_bot_token": "8447880856:AAGOaLR_4542pG0kqkwPUbjOC2PXLqUryOs",
         "telegram_chat_id": "7195584903",
         "telegram_enabled": "true",
-        "urgency_threshold": "75",
+        "urgency_threshold": "65",
         "poll_interval_minutes": "10",
         "tracked_countries": json.dumps(["Egypt", "Iran", "Israel", "Germany"]),
         "tracked_categories": json.dumps(["Warfare", "Intelligence", "Cyber", "Nuclear", "Diplomacy", "Arms"]),
@@ -534,6 +534,14 @@ def get_settings():
     cursor.execute("SELECT key, value FROM settings")
     settings = {r["key"]: r["value"] for r in cursor.fetchall()}
     conn.close()
+    if not settings.get("telegram_bot_token"):
+        settings["telegram_bot_token"] = "8447880856:AAGOaLR_4542pG0kqkwPUbjOC2PXLqUryOs"
+    if not settings.get("telegram_chat_id"):
+        settings["telegram_chat_id"] = "7195584903"
+    if "telegram_enabled" not in settings:
+        settings["telegram_enabled"] = "true"
+    if "urgency_threshold" not in settings or settings.get("urgency_threshold") == "75":
+        settings["urgency_threshold"] = "65"
     return settings
 
 def update_settings(updates: dict):
@@ -561,6 +569,13 @@ def get_user_profile(username: str, mask: bool = False):
     if row:
         profile = dict(row)
         conn.close()
+        # Fallback to configured defaults if profile has empty values
+        if not profile.get("telegram_bot_token"):
+            profile["telegram_bot_token"] = "8447880856:AAGOaLR_4542pG0kqkwPUbjOC2PXLqUryOs"
+        if not profile.get("telegram_chat_id"):
+            profile["telegram_chat_id"] = "7195584903"
+        if profile.get("urgency_threshold") in [None, 75]:
+            profile["urgency_threshold"] = 65
         if mask and profile.get("telegram_bot_token"):
             profile["telegram_bot_token_masked"] = mask_credential(profile["telegram_bot_token"])
         return profile
@@ -569,12 +584,12 @@ def get_user_profile(username: str, mask: bool = False):
     default_profile = {
         "username": username.strip(),
         "display_name": username.strip(),
-        "telegram_bot_token": "",
-        "telegram_chat_id": "",
-        "telegram_enabled": 0,
+        "telegram_bot_token": "8447880856:AAGOaLR_4542pG0kqkwPUbjOC2PXLqUryOs",
+        "telegram_chat_id": "7195584903",
+        "telegram_enabled": 1,
         "email_recipient": "",
         "email_enabled": 0,
-        "urgency_threshold": 75,
+        "urgency_threshold": 65,
         "poll_interval_minutes": 10,
         "theme_preference": "dark",
         "created_at": datetime.now(timezone.utc).isoformat()
@@ -607,11 +622,11 @@ def save_user_profile(username: str, data: dict):
     if new_token and "••" not in new_token:
         tg_token = new_token.strip()
     else:
-        tg_token = existing.get("telegram_bot_token", "")
+        tg_token = existing.get("telegram_bot_token", "8447880856:AAGOaLR_4542pG0kqkwPUbjOC2PXLqUryOs")
 
-    tg_chat = data.get("telegram_chat_id", existing.get("telegram_chat_id", "")).strip()
-    tg_en = 1 if str(data.get("telegram_enabled", existing.get("telegram_enabled"))).lower() in ["true", "1"] else 0
-    urgency = int(data.get("urgency_threshold", existing.get("urgency_threshold", 75)))
+    tg_chat = data.get("telegram_chat_id", existing.get("telegram_chat_id", "7195584903")).strip()
+    tg_en = 1 if str(data.get("telegram_enabled", existing.get("telegram_enabled", 1))).lower() in ["true", "1"] else 0
+    urgency = int(data.get("urgency_threshold", existing.get("urgency_threshold", 65)))
     poll = int(data.get("poll_interval_minutes", existing.get("poll_interval_minutes", 10)))
     theme = data.get("theme_preference", existing.get("theme_preference", "dark"))
     email_rec = data.get("email_recipient", existing.get("email_recipient", "")).strip()

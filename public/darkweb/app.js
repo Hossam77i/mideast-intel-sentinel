@@ -2063,7 +2063,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (tokenInput) tokenInput.placeholder = data.telegram_bot_token_masked || "••••••••••••••••";
       if (chatInput) chatInput.value = data.telegram_chat_id_masked || "7195••••";
-      if (thresholdInput) thresholdInput.value = data.alert_threshold || 75;
+      if (thresholdInput) thresholdInput.value = data.alert_threshold || 65;
       if (cutoffInput) cutoffInput.value = data.relevance_min_score || 25;
 
       const savedCustom = localStorage.getItem("darkweb_saved_settings");

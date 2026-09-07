@@ -335,7 +335,7 @@ def api_get_settings(username: str = Query("Hossam")):
         "telegram_enabled": bool(profile.get("telegram_enabled", 0)),
         "email_recipient": profile.get("email_recipient", ""),
         "email_enabled": bool(profile.get("email_enabled", 0)),
-        "urgency_threshold": int(profile.get("urgency_threshold", 75)),
+        "urgency_threshold": int(profile.get("urgency_threshold", 65)),
         "poll_interval_minutes": int(profile.get("poll_interval_minutes", 10)),
         "theme_preference": profile.get("theme_preference", "dark")
     }
@@ -354,11 +354,11 @@ def api_test_telegram(payload: dict = Body(None)):
     user_token = payload.get("bot_token") if payload else None
     # If user submitted a masked string or empty string, fallback to saved token
     if not user_token or "••" in user_token:
-        token = profile.get("telegram_bot_token")
+        token = profile.get("telegram_bot_token") or "8447880856:AAGOaLR_4542pG0kqkwPUbjOC2PXLqUryOs"
     else:
         token = user_token.strip()
 
-    chat_id = (payload and payload.get("chat_id")) or profile.get("telegram_chat_id")
+    chat_id = (payload and payload.get("chat_id")) or profile.get("telegram_chat_id") or "7195584903"
 
     if not token or not chat_id:
         return {"success": False, "error": "Please provide both Telegram Bot Token and Chat ID."}
