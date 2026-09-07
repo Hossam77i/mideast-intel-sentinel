@@ -1,9 +1,131 @@
-// GitHub Pages Live Backend Connector
-const DEFAULT_SENTINEL_BACKEND = "https://craig-phrases-celebrities-creations.trycloudflare.com";
-const IS_GH_PAGES = window.location.hostname.includes("github.io");
-let SENTINEL_API_BASE = IS_GH_PAGES 
-  ? (localStorage.getItem("sentinel_backend_url") || DEFAULT_SENTINEL_BACKEND) 
-  : "";
+// --- LIVE BACKEND RESOLUTION & MULTI-TUNNEL AUTO-DISCOVERY ---
+const APP_NAME = "mideast";
+const STORAGE_BACKEND_KEY = "mideast_sentinel_backend_url";
+localStorage.removeItem("sentinel_backend_url");
+
+const KNOWN_BACKENDS = [
+  "https://rhode-mono-sally-angle.trycloudflare.com",
+  "https://cordless-display-dressing-bookmarks.trycloudflare.com"
+];
+
+let API_BASE = "";
+if (window.location.hostname.includes("github.io")) {
+  API_BASE = localStorage.getItem(STORAGE_BACKEND_KEY) || KNOWN_BACKENDS[0];
+}
+
+async function apiFetch(url, options = {}) {
+  const fullUrl = (API_BASE && url.startsWith("/")) ? (API_BASE + url) : url;
+  try {
+    const res = await fetch(fullUrl, options);
+    if (res.ok) {
+      updateBackendPill(true);
+      return res;
+    }
+    if (window.location.hostname.includes("github.io") && [502, 503, 504, 530].includes(res.status)) {
+      for (const fallback of KNOWN_BACKENDS) {
+        if (fallback !== API_BASE) {
+          try {
+            const fbRes = await fetch(fallback + url, options);
+            if (fbRes.ok) {
+              API_BASE = fallback;
+              localStorage.setItem(STORAGE_BACKEND_KEY, fallback);
+              updateBackendPill(true);
+              return fbRes;
+            }
+          } catch (e) {}
+        }
+      }
+    }
+    return res;
+  } catch (err) {
+    if (window.location.hostname.includes("github.io")) {
+      for (const fallback of KNOWN_BACKENDS) {
+        if (fallback !== API_BASE) {
+          try {
+            const fbRes = await fetch(fallback + url, options);
+            if (fbRes.ok) {
+              API_BASE = fallback;
+              localStorage.setItem(STORAGE_BACKEND_KEY, fallback);
+              updateBackendPill(true);
+              return fbRes;
+            }
+          } catch (e) {}
+        }
+      }
+    }
+    updateBackendPill(false, err.message);
+    throw err;
+  }
+}
+
+function updateBackendPill(isOnline, detail = "") {
+  const dot = document.getElementById("backendPillDot");
+  const text = document.getElementById("backendPillText");
+  const pill = document.getElementById("backendPill");
+  if (!pill) return;
+  if (isOnline) {
+    if (dot) { dot.className = "pulse-dot green"; }
+    if (text) {
+      const host = API_BASE ? new URL(API_BASE).hostname.replace(".trycloudflare.com", "") : "Local";
+      text.textContent = `Backend: ${host}`;
+    }
+  } else {
+    if (dot) { dot.className = "pulse-dot offline"; }
+    if (text) { text.textContent = "Backend: Offline"; }
+  }
+}
+
+window.openBackendModal = function() {
+  const modal = document.getElementById("backendModal");
+  const input = document.getElementById("backendUrlInput");
+  const res = document.getElementById("backendPingResult");
+  if (modal) modal.classList.remove("hidden");
+  if (input) input.value = API_BASE || KNOWN_BACKENDS[0];
+  if (res) res.textContent = "";
+};
+
+window.closeBackendModal = function() {
+  const modal = document.getElementById("backendModal");
+  if (modal) modal.classList.add("hidden");
+};
+
+window.resetBackendDefault = function() {
+  const input = document.getElementById("backendUrlInput");
+  if (input) input.value = KNOWN_BACKENDS[0];
+};
+
+window.testAndSaveBackend = async function() {
+  const input = document.getElementById("backendUrlInput");
+  const res = document.getElementById("backendPingResult");
+  const url = input ? input.value.trim().replace(/\/$/, "") : "";
+  if (!url) {
+    if (res) { res.textContent = "❌ Please enter a valid URL."; res.style.color = "var(--accent-red)"; }
+    return;
+  }
+  if (res) { res.textContent = "⏳ Testing connection..."; res.style.color = "var(--accent-blue)"; }
+  try {
+    const testRes = await fetch(url + "/api/public-url", { method: "GET" });
+    if (testRes.ok) {
+      API_BASE = url;
+      localStorage.setItem(STORAGE_BACKEND_KEY, url);
+      updateBackendPill(true);
+      if (res) { res.textContent = "✅ Connected successfully! Reloading..."; res.style.color = "var(--accent-green)"; }
+      setTimeout(() => {
+        window.closeBackendModal();
+        window.location.reload();
+      }, 1000);
+    } else {
+      if (res) { res.textContent = `⚠️ Server returned status ${testRes.status}. Saved anyway.`; res.style.color = "var(--accent-yellow)"; }
+      API_BASE = url;
+      localStorage.setItem(STORAGE_BACKEND_KEY, url);
+      updateBackendPill(false);
+    }
+  } catch (err) {
+    if (res) { res.textContent = `❌ Connection failed: ${err.message}`; res.style.color = "var(--accent-red)"; }
+  }
+};
+// --- END CONNECTOR ---
+
 /* ==========================================================================
    SENTINEL OSINT INTELLIGENCE // COMPREHENSIVE CONTROLLER
    ========================================================================== */
@@ -126,7 +248,7 @@ function confirmUserProfile() {
    ========================================================================== */
 async function loadPublicUrl() {
   try {
-    const res = await fetch(SENTINEL_API_BASE + "/api/public-url");
+    const res = await apiFetch("/api/public-url");
     const data = await res.json();
     if (data.public_url) {
       publicShareUrl = data.public_url;
@@ -277,7 +399,7 @@ async function fetchHistoricalArchives() {
       from_year: customFromYear,
       to_year: customToYear
     };
-    const res = await fetch(SENTINEL_API_BASE + "/api/collect-historical", {
+    const res = await apiFetch("/api/collect-historical", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -345,7 +467,7 @@ async function initStats() {
       params.append("year", currentYear);
     }
 
-    const res = await fetch(`${SENTINEL_API_BASE}/api/stats?${params.toString()}`);
+    const res = await apiFetch(`/api/stats?${params.toString()}`);
     const data = await res.json();
 
     const bannerCount = document.getElementById("banner-count-text");
@@ -364,7 +486,7 @@ async function triggerIngestion() {
   btn.disabled = true;
 
   try {
-    const res = await fetch(SENTINEL_API_BASE + "/api/collect", { method: "POST" });
+    const res = await apiFetch("/api/collect", { method: "POST" });
     const data = await res.json();
     initStats();
     resetAndReloadArticles();
@@ -436,7 +558,7 @@ async function loadArticles(append = false) {
   if (search) params.append("search", search);
 
   try {
-    const res = await fetch(`${SENTINEL_API_BASE}/api/articles?${params.toString()}`);
+    const res = await apiFetch(`/api/articles?${params.toString()}`);
     const data = await res.json();
     const items = data.articles || [];
     totalArticlesCount = data.total || 0;
@@ -607,7 +729,7 @@ async function initGraph() {
       params.append("year", currentYear);
     }
 
-    const res = await fetch(`${SENTINEL_API_BASE}/api/graph?${params.toString()}`);
+    const res = await apiFetch(`/api/graph?${params.toString()}`);
     const data = await res.json();
 
     const isDark = currentTheme === "dark";
@@ -691,7 +813,7 @@ async function refreshGraph() {
   }
 
   try {
-    const res = await fetch(`${SENTINEL_API_BASE}/api/graph?${params.toString()}`);
+    const res = await apiFetch(`/api/graph?${params.toString()}`);
     const data = await res.json();
 
     const isDark = currentTheme === "dark";
@@ -830,7 +952,7 @@ async function loadCausalChains() {
       params.append("year", currentYear);
     }
 
-    const res = await fetch(`${SENTINEL_API_BASE}/api/causal-chains?${params.toString()}`);
+    const res = await apiFetch(`/api/causal-chains?${params.toString()}`);
     const chains = await res.json();
 
     if (chains.length === 0) {
@@ -883,7 +1005,7 @@ async function loadCausalChains() {
    ========================================================================== */
 async function loadSettings() {
   try {
-    const res = await fetch(`${SENTINEL_API_BASE}/api/settings?username=${encodeURIComponent(currentUser)}`);
+    const res = await apiFetch(`/api/settings?username=${encodeURIComponent(currentUser)}`);
     const s = await res.json();
 
     document.getElementById("setting-tg-enabled").checked = s.telegram_enabled;
@@ -927,7 +1049,7 @@ async function saveSettings() {
   }
 
   try {
-    await fetch(SENTINEL_API_BASE + "/api/settings", {
+    await apiFetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -953,7 +1075,7 @@ async function testTelegramAlert() {
   }
 
   try {
-    const res = await fetch(SENTINEL_API_BASE + "/api/test-telegram", {
+    const res = await apiFetch("/api/test-telegram", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -974,7 +1096,7 @@ async function loadNotifications() {
   if (!tbody) return;
 
   try {
-    const res = await fetch(SENTINEL_API_BASE + "/api/notifications");
+    const res = await apiFetch("/api/notifications");
     const notes = await res.json();
 
     if (notes.length === 0) {
@@ -1025,7 +1147,7 @@ async function runQuickTest() {
   }
 
   try {
-    const res = await fetch(SENTINEL_API_BASE + "/api/test-telegram", {
+    const res = await apiFetch("/api/test-telegram", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
