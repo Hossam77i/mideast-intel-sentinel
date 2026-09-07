@@ -1,0 +1,1340 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Egypt Black Wolf | Dark Web Sentinel & OSINT Recon v2.1</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+  <link rel="shortcut icon" href="./favicon.ico">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Toast Notification Container -->
+  <div id="toastNotification" class="toast-notification hidden"></div>
+
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">🐺</div>
+      <div class="brand-text">
+        <h1>EGYPT BLACK WOLF <span>DARKNET SENTINEL v2.1</span></h1>
+        <p class="tagline">Anti-Noise Tor OSINT • Deep Service Recon • Directory Inspector & Leak Tracker</p>
+      </div>
+    </div>
+
+    <!-- Live Status Pill & Global Controls -->
+    <div class="header-actions">
+      <button id="btnRotateTorCircuit" class="pill-btn danger" title="Rotate Tor Exit Circuit via SIGNAL NEWNYM">
+        🔄 Rotate Circuit
+      </button>
+
+      <button id="btnClearCacheBtn" class="pill-btn warning" title="Clear Cached Recon Operations & Indices">
+        🗑️ Clear Cache
+      </button>
+
+      <div class="tor-badge" id="torStatusBadge">
+        <span class="pulse-dot"></span>
+        <span id="torStatusText">Checking Tor SOCKS5...</span>
+      </div>
+
+      <div class="watchdog-pill" id="watchdogHeaderPill" title="24/7 Darknet Watchdog Status">
+        <span class="pulse-dot green"></span>
+        <span id="watchdogHeaderText">24/7 Watchdog: Active</span>
+      </div>
+
+      <a href="http://localhost:8000" id="mideastSentinelLink" target="_blank" class="nav-switch-btn" title="Switch to Middle East Geopolitical Sentinel">
+        🌍 MidEast Sentinel (8000)
+      </a>
+
+      <button id="copyPublicLinkBtn" class="nav-switch-btn hidden" title="Copy Public Cloudflare URL for Remote Access">
+        🔗 Share Link
+      </button>
+
+      <div id="backendPill" class="nav-switch-btn" onclick="window.openBackendModal()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="Configure Live Backend URL">
+        <span class="pulse-dot green" id="backendPillDot" style="width:8px;height:8px;"></span>
+        <span id="backendPillText">Backend: Online</span>
+        <span style="font-size:0.75rem;opacity:0.6;">⚙️</span>
+      </div>
+
+      <button id="themeToggleBtn" class="icon-btn" title="Toggle Dark/Light Mode">
+        <span id="themeIcon">☀️</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Global Filter Control Toolbar (Time Range & Sort Order) -->
+  <div class="global-filter-bar">
+    <div class="filter-controls-wrap">
+      <!-- Time Range Filter -->
+      <div class="filter-item">
+        <span class="filter-label">🕒 Time Window:</span>
+        <select id="globalTimeSelect" class="select-input select-sm">
+          <option value="All">All Historical Years</option>
+          <option value="2026">2026 (Current)</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023</option>
+          <option value="2022">2022</option>
+          <option value="custom">Custom Year Range...</option>
+        </select>
+      </div>
+
+      <!-- Custom Year Range Inputs -->
+      <div id="customYearRangeWrap" class="custom-year-wrap hidden">
+        <span class="text-sub">From:</span>
+        <input type="number" id="customYearStart" class="year-input" placeholder="2022" min="2010" max="2030" value="2022">
+        <span class="text-sub">To:</span>
+        <input type="number" id="customYearEnd" class="year-input" placeholder="2026" min="2010" max="2030" value="2026">
+        <button id="applyYearRangeBtn" class="pill-btn primary">Apply</button>
+      </div>
+
+      <!-- Rearrange / Sort Order Filter -->
+      <div class="filter-item">
+        <span class="filter-label">📊 Rearrange Order:</span>
+        <select id="globalSortSelect" class="select-input select-sm">
+          <option value="time_desc">🕒 Most Recent First (Default)</option>
+          <option value="severity_desc">🚨 Highest Severity / Urgency (100 ➔ 0)</option>
+          <option value="time_asc">⏳ Oldest First (Chronological)</option>
+          <option value="size_desc">💾 Largest Breach Size (GB)</option>
+          <option value="country">🌍 By Country / Target Axis</option>
+          <option value="relevance_desc">🎯 Highest Relevance (BM25)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Telemetry Pill -->
+    <div class="filter-telemetry" id="filterActiveBadge">
+      <span class="telemetry-tag">Mode: Active Multi-Filter Matrix</span>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs">
+    <button class="tab-btn active" data-tab="searchTab">🔍 Darknet Search</button>
+    <button class="tab-btn" data-tab="reconTab">📡 Deep Recon & Service Discovery <span class="badge badge-accent" id="newEnginesBadge">0 New</span></button>
+    <button class="tab-btn" data-tab="directoryTab">📂 Directories & Lists <span class="badge" id="directoryBadge">349</span></button>
+    <button class="tab-btn" data-tab="leaksTab">🚨 Data Leaks & Breaches <span class="badge" id="leaksCountBadge">0</span></button>
+    <button class="tab-btn" data-tab="targetsTab">🌐 Onion Target Matrix <span class="badge" id="targetsCountBadge">0</span></button>
+    <button class="tab-btn" data-tab="discoveryTab">🕸️ Discovery & Noise Filter <span class="badge" id="discoveryBadge">0</span></button>
+    <button class="tab-btn" data-tab="settingsTab">⚙️ Alert Bot & Settings</button>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="main-container">
+    
+    <!-- Top System Metrics -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Monitored Onion Targets</div>
+        <div class="metric-value" id="statTargets">--</div>
+        <div class="metric-sub" id="statOnline">-- Active Online</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Directory Catalog Links</div>
+        <div class="metric-value text-accent-purple" id="statCatalogLinks">349</div>
+        <div class="metric-sub">FCZ7, HiddenWiki, Linkyyx</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Data Leaks Disclosed</div>
+        <div class="metric-value text-accent-red" id="statLeaks">--</div>
+        <div class="metric-sub">Defense, Telecom, Energy</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Recon Operations Cached</div>
+        <div class="metric-value text-accent-blue" id="statReconOps">--</div>
+        <div class="metric-sub">Persistent Search History</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Indexed Darknet Pages</div>
+        <div class="metric-value text-accent-green" id="statIndexedPages">--</div>
+        <div class="metric-sub">BM25 Full-Text Searchable</div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         TAB 1: DARKNET SEARCH (DUAL MODES)
+         ======================================================== -->
+    <section id="searchTab" class="tab-content active">
+      <div class="search-panel">
+        
+        <!-- Dual Mode Switch -->
+        <div class="search-mode-selector">
+          <span class="mode-label">Search Scope Mode:</span>
+          <div class="mode-toggle-group">
+            <button class="mode-btn active" id="modeThreatIntel" data-mode="threat_intel">
+              🛡️ Threat Intel & Leaks
+            </button>
+            <button class="mode-btn" id="modeGlobal" data-mode="global">
+              🌐 Global Darknet Search (Any Service / Topic)
+            </button>
+          </div>
+          <span class="mode-helper text-muted" id="modeHelperText">
+            Focuses on military, espionage, zero-days, SCADA, and leaked data.
+          </span>
+        </div>
+
+        <div class="search-bar-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="searchInput" placeholder="Search darknet indexed content (e.g. 'radio', 'LockBit Egypt', 'Mossad radar', 'IRGC telemetry', 'PGP keyserver')..." autofocus>
+          <button id="searchBtn" class="primary-btn">Execute Search</button>
+        </div>
+
+        <!-- Quick Filters -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <label>Country Target:</label>
+            <div class="pill-group" id="searchCountryFilter">
+              <button class="pill active" data-val="All">All</button>
+              <button class="pill" data-val="Egypt">🇪🇬 Egypt</button>
+              <button class="pill" data-val="Iran">🇮🇷 Iran</button>
+              <button class="pill" data-val="Israel">🇮🇱 Israel</button>
+              <button class="pill" data-val="Germany">🇩🇪 Germany</button>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <label>Category:</label>
+            <select id="searchCategoryFilter" class="select-input">
+              <option value="All">All Categories</option>
+              <option value="Data Leaks & Breaches">Data Leaks & Breaches</option>
+              <option value="Military & Warfare">Military & Warfare</option>
+              <option value="Intelligence & Covert Ops">Intelligence & Covert Ops</option>
+              <option value="Ransomware & Underground">Ransomware & Underground</option>
+              <option value="Service / Media">Services & Media (Radio, Feeds)</option>
+              <option value="Tool / AI">Tools & AI Systems</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Search Results Container -->
+      <div class="results-container">
+        <div class="results-header">
+          <div class="results-title-wrap">
+            <h3 id="searchResultsSummary">Intelligence Results (15 Federated Engines)</h3>
+            <span class="text-muted" id="searchLatency">0 ms</span>
+          </div>
+          <div class="results-actions">
+            <button id="btnExportSearchDossier" class="secondary-btn btn-sm">📄 Export OSINT Dossier</button>
+          </div>
+        </div>
+        
+        <div id="searchResultsList" class="results-list">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Dynamic Load More / Previous Button -->
+        <div class="pagination-footer" id="searchPaginationWrap">
+          <button id="searchLoadMoreBtn" class="load-more-btn hidden">
+            ⬇️ Show More Results / Previous Records
+          </button>
+          <div id="searchTelemetryText" class="pagination-telemetry text-muted"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         TAB 2: DEEP RECON & SERVICE DISCOVERY
+         ======================================================== -->
+    <section id="reconTab" class="tab-content">
+      
+      <!-- Recon Hero Card -->
+      <div class="recon-hero-card">
+        <div class="hero-left">
+          <h2>📡 Deep Darknet Service Recon & Fact-Priority Crawler</h2>
+          <p>
+            Search across darknet directories, search engines, and live onion sources for any target service or name 
+            (e.g., <strong>radio</strong>, <strong>streaming</strong>, <strong>keyserver</strong>, <strong>hossam</strong>, <strong>forum</strong>, <strong>crypto</strong>). 
+            Our multi-source engine probes each site over Tor in parallel, ranks factual authenticity, auto-indexes live services, and isolates new search engines for user review.
+          </p>
+        </div>
+      </div>
+
+      <!-- Discovered Search Engines Alert Banner -->
+      <div id="discoveredEnginesAlert" class="alert-banner-box hidden">
+        <div class="alert-banner-header">
+          <div class="alert-title">
+            <span class="alert-icon">🚨</span>
+            <div>
+              <h4>New Darknet Search Engines / Link Lists Discovered!</h4>
+              <p class="text-sub">The crawler identified unmonitored darknet portals. Inspect them or add them directly to your active search pool.</p>
+            </div>
+          </div>
+        </div>
+        <div id="discoveredEnginesList" class="discovered-engines-cards">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Recon Search Console -->
+      <div class="recon-console-panel">
+        <div class="recon-input-row">
+          <div class="input-with-icon">
+            <span class="input-icon">🎯</span>
+            <input type="text" id="reconQueryInput" placeholder="Enter target service or entity name (e.g. 'radio', 'streaming', 'keyserver', 'hossam', 'forum')..." value="radio">
+          </div>
+
+          <div class="recon-options">
+            <select id="reconScopeSelect" class="select-input">
+              <option value="All Active Engines">All Active Engines & Directories</option>
+              <option value="Ahmia Onion">Ahmia Onion Engine</option>
+              <option value="Torch Onion">Torch Onion Engine</option>
+              <option value="Curated Directories">Curated Master Directories</option>
+            </select>
+
+            <button id="runReconBtn" class="primary-btn recon-btn">
+              ⚡ Launch Deep Recon Probe
+            </button>
+          </div>
+        </div>
+
+        <!-- Cache Telemetry Bar -->
+        <div id="reconCacheBar" class="cache-bar hidden">
+          <div class="cache-info">
+            <span class="cache-icon">⚡</span>
+            <span id="reconCacheText">Loaded from persistent search operations cache.</span>
+          </div>
+          <button id="forceReconBtn" class="secondary-btn btn-sm">
+            🔄 Force Fresh Live Re-crawl
+          </button>
+        </div>
+      </div>
+
+      <!-- Recon Progress Indicator -->
+      <div id="reconProgressWrap" class="recon-progress-card hidden">
+        <div class="spinner"></div>
+        <div class="progress-details">
+          <h4>Probing Darknet Search Engines & Link Lists over Tor Circuit...</h4>
+          <p id="reconProgressStatus">Federating query, downloading candidate DOMs in parallel, and scoring factual authenticity...</p>
+        </div>
+      </div>
+
+      <!-- Recon Results Matrix -->
+      <div class="recon-results-container">
+        <div class="results-header">
+          <div class="results-title-wrap">
+            <h3 id="reconResultsSummary">Verified Service Discoveries (Ranked by Factual Priority)</h3>
+            <span class="text-muted" id="reconDuration">0 ms</span>
+          </div>
+          <div class="results-actions">
+            <button id="btnExportReconDossier" class="secondary-btn btn-sm">📄 Export Recon Dossier</button>
+          </div>
+        </div>
+
+        <!-- Priority Legend -->
+        <div class="priority-legend">
+          <span class="legend-item"><span class="dot green"></span> Priority 1: Authentic Direct Service</span>
+          <span class="legend-item"><span class="dot blue"></span> Priority 2: Online Aggregator / Directory Listing</span>
+          <span class="legend-item"><span class="dot yellow"></span> Priority 3: General Mention</span>
+          <span class="legend-item"><span class="dot red"></span> Priority 4: Offline / Unreachable</span>
+        </div>
+
+        <div id="reconResultsList" class="recon-grid">
+          <!-- Populated dynamically with priority badges -->
+        </div>
+      </div>
+
+      <!-- Past Recon Operations History Section -->
+      <div class="history-section">
+        <div class="history-header">
+          <h3>📁 Past Recon Operations Archive</h3>
+          <span class="text-muted">Stored persistently in database and <code>data/search_operations.json</code></span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Operation ID</th>
+                <th>Query / Service</th>
+                <th>Search Scope</th>
+                <th>Execution Timestamp</th>
+                <th>Sites Found</th>
+                <th>Live Sites</th>
+                <th>Duration</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="reconHistoryTableBody">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================
+         TAB 3: DIRECTORIES & MASTER LISTS EXPLORER (NEW)
+         ======================================================== -->
+    <section id="directoryTab" class="tab-content">
+      <div class="directory-hero-card">
+        <div class="hero-left">
+          <h2>📂 Curated Darknet Directories & Master Lists Explorer</h2>
+          <p>
+            Separated link repository explorer tracking <strong>Linkyyx Darknet Directory</strong>, <strong>FCZ7 Master Index</strong>, and <strong>The Hidden Wiki</strong>.
+            Search inside each directory specifically for underground forums, search engines, or leak sites. Run strong Tor link checks, compare with your project targets, and 1-click import unmonitored sites.
+          </p>
+        </div>
+        <div class="hero-right">
+          <button id="strongCheckAllVisibleBtn" class="primary-btn">⚡ Run Strong Check on Visible Links</button>
+          <button id="batchAddVisibleBtn" class="secondary-btn">➕ Batch Add New Sites to Project</button>
+        </div>
+      </div>
+
+      <!-- Recursive Surface Expansion Circuit Panel -->
+      <div class="expansion-circuit-card">
+        <div class="circuit-header">
+          <div class="circuit-title">
+            <h3>⚡ Recursive Darknet Expansion Circuit: Discover & Ingest Link Lists</h3>
+            <p class="text-sub">Query darknet engines for link directories, wikis & pastebins. Automatically extract child onion links, detect search engines, and expand your intelligence federation.</p>
+          </div>
+          <span class="circuit-badge">Exponential Surface Growth</span>
+        </div>
+        <div class="circuit-controls">
+          <div class="circuit-input-group">
+            <input type="text" id="harvestKeywordInput" placeholder="Search for darknet lists (e.g. 'directory', 'link list', 'hidden wiki', 'awesome onion')..." value="directory">
+            <button id="btnHarvestLists" class="primary-btn">🌐 Discover Lists over Tor</button>
+            <button id="btnOpenAddEngineModal" class="pill-btn primary" style="background:#10b981; border-color:#10b981; color:#fff; font-weight:700;">➕ Add New Search Engine / Directory</button>
+          </div>
+          <span class="circuit-divider">OR CRAWL SPECIFIC LIST ONION URL:</span>
+          <div class="circuit-input-group">
+            <input type="text" id="harvestCustomUrlInput" placeholder="http://[56-character-hash].onion list or wiki address">
+            <button id="btnCrawlListUrl" class="secondary-btn">⚡ Scrape & Extract Links</button>
+          </div>
+        </div>
+
+        <!-- Discovered Links Ingestion Box (Appears when harvested) -->
+        <div id="harvestedResultsBox" class="harvested-results-box hidden">
+          <div class="harvested-header">
+            <h4 id="harvestedTitle">Extracted Darknet Links (0 Candidates)</h4>
+            <div class="harvested-actions">
+              <span id="harvestedEnginesFound" class="badge badge-accent">0 Engines Found</span>
+              <button id="btnIngestAllHarvested" class="primary-btn btn-sm">⚡ Ingest All to Master Catalog & Engine Pipeline</button>
+              <button id="btnCloseHarvested" class="pill-btn secondary btn-sm">&times; Dismiss</button>
+            </div>
+          </div>
+          <div class="table-container max-h-300">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Domain & Address</th>
+                  <th>Title / Label</th>
+                  <th>Detected Category</th>
+                  <th>Engine / Dir?</th>
+                  <th>Snippet / Context</th>
+                </tr>
+              </thead>
+              <tbody id="harvestedTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Directory Selector Cards -->
+      <div class="directory-selector-grid" id="directoryCardsGrid">
+        <!-- Rendered dynamically from /api/directories/summary -->
+      </div>
+
+      <!-- In-Directory Search and Filter Bar -->
+      <div class="section-toolbar" style="margin-top: 1.5rem;">
+        <div class="toolbar-title">
+          <h3 id="currentDirectoryTitle">FCZ7 Master Index (270 Links)</h3>
+          <p class="subtitle" id="currentDirectorySub">Showing underground forums, search engines, tools & darknet services</p>
+        </div>
+        <div class="toolbar-actions">
+          <div class="pill-group" id="dirCategoryFilter">
+            <button class="pill active" data-val="All">All Categories</button>
+            <button class="pill" data-val="Search Engine">🔍 Search Engines</button>
+            <button class="pill" data-val="Underground Forum">💬 Forums</button>
+            <button class="pill" data-val="Data Leak Site">🚨 Leaks / DLS</button>
+            <button class="pill" data-val="Tool / AI">🛠️ Tools & AI</button>
+          </div>
+          <div class="dir-search-wrap">
+            <input type="text" id="dirSearchInput" placeholder="Filter inside directory (e.g. 'forum', 'engine', 'radio')...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Directory Links Table -->
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Target Title & Onion URL</th>
+              <th>Category</th>
+              <th>Directory Context / Description</th>
+              <th>Project Status</th>
+              <th>Tor Liveness</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="directoryTableBody">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Directory Pagination -->
+      <div class="pagination-footer" id="directoryPaginationWrap">
+        <button id="directoryLoadMoreBtn" class="load-more-btn hidden">
+          ⬇️ Show More Directory Links
+        </button>
+        <div id="directoryTelemetryText" class="pagination-telemetry text-muted"></div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         TAB 4: DATA LEAKS & BREACHES
+         ======================================================== -->
+    <section id="leaksTab" class="tab-content">
+      <div class="section-toolbar">
+        <div class="toolbar-title">
+          <h2>🚨 Ransomware DLS & Underground Leak Intel</h2>
+          <p class="subtitle">Monitored disclosures across LockBit, BreachForums, RansomHub, Akira, Tenebris & Pwn Forums (24 Disclosures)</p>
+        </div>
+        <div class="toolbar-actions">
+          <button id="btnExportLeaksDossier" class="secondary-btn">📄 Export OSINT Dossier</button>
+          <button id="openAddTelegramModalBtn" class="primary-btn" style="background:#0284c7; border-color:#0284c7;">📱 + Add Telegram Channel</button>
+          <button id="openAddForumModalBtn" class="secondary-btn">➕ Add Leak Forum Target</button>
+          <button id="openAddLeakModalBtn" class="secondary-btn">+ Log Intel Leak</button>
+          <button id="btnToggleThreatGraph" class="primary-btn">🕸️ Threat Entity Graph</button>
+        </div>
+      </div>
+
+      <!-- Monitored Telegram Threat & Leak Channels Panel -->
+      <div class="telegram-channels-container">
+        <div class="tg-channels-header">
+          <div class="tg-title-box">
+            <h4>📱 Monitored Threat Intel & Breach Channels <span class="badge badge-accent" id="tgChannelsCountBadge">12 Channels</span></h4>
+            <span class="text-muted">Proactive OSINT scanning of Telegram leak announcements, database dumps, and underground groups</span>
+          </div>
+          <div class="tg-actions-box">
+            <button id="btnScanAllTelegramChannels" class="pill-btn primary">⚡ Scan Telegram Channels Now</button>
+            <button id="btnOpenAddTelegramModalQuick" class="pill-btn secondary">➕ Add Channel / Invite</button>
+            <button id="btnToggleTelegramGrid" class="pill-btn secondary">Toggle Panel</button>
+          </div>
+        </div>
+        <div id="telegramChannelsGrid" class="telegram-channels-grid">
+          <!-- Rendered dynamically from /api/telegram/channels -->
+        </div>
+      </div>
+
+      <!-- In-Leaks Multi-Filter & Search Bar -->
+      <div class="leaks-filter-bar">
+        <div class="search-input-wrap">
+          <input type="text" id="leakSearchInput" placeholder="🔍 Search disclosures by target company, threat actor, sector, keyword, or onion URL...">
+        </div>
+        <div class="select-filters-wrap">
+          <select id="leakForumSelect" class="select-input select-sm">
+            <option value="All">All Darknet Sources (55 Disclosures)</option>
+            <option value="telegram">📱 Telegram Disclosures Only (Active Threat Channels)</option>
+            <option value="ransomware">Ransomware DLS Only (LockBit, RansomHub, Akira, etc.)</option>
+            <option value="pwn_forums">Breach & Pwn Forums Only (BreachForums, Exploit.in, Pwned)</option>
+            <option value="cyberwarfare">Cyber Warfare & State Disclosures (Tenebris, DarkFox, IRGC)</option>
+          </select>
+          <div class="pill-group" id="leakCountryFilter">
+            <button class="pill active" data-val="All">All Focus</button>
+            <button class="pill" data-val="Egypt">🇪🇬 Egypt</button>
+            <button class="pill" data-val="Iran">🇮🇷 Iran</button>
+            <button class="pill" data-val="Israel">🇮🇱 Israel</button>
+            <button class="pill" data-val="Germany">🇩🇪 Germany</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Point 5: Interactive Threat Entity Relationship Graph Container -->
+      <div id="threatGraphWrap" class="threat-graph-container hidden">
+        <div class="graph-header">
+          <div class="graph-title">
+            <h4>🕸️ Darknet Threat Entity Relationship Matrix</h4>
+            <span class="text-muted">Interactive force-directed graph: Sentinel Core ➔ Threat Actors & Pwn Forums ➔ Disclosed Victims ➔ Target Countries & Sectors</span>
+          </div>
+          <div class="graph-actions">
+            <button id="resetGraphViewBtn" class="pill-btn secondary">Center Graph</button>
+            <button id="closeGraphViewBtn" class="pill-btn primary">Back to Cards View</button>
+          </div>
+        </div>
+        <div class="graph-canvas-box">
+          <canvas id="threatGraphCanvas"></canvas>
+          <div id="threatGraphDetailCard" class="graph-detail-card hidden">
+            <div class="detail-header">
+              <h5 id="graphDetailTitle">Node Details</h5>
+              <button id="closeGraphDetailBtn" class="close-btn">&times;</button>
+            </div>
+            <div id="graphDetailBody" class="detail-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaks Grid -->
+      <div id="leaksGrid" class="leaks-grid">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Leaks Load More Button -->
+      <div class="pagination-footer" id="leaksPaginationWrap">
+        <button id="leaksLoadMoreBtn" class="load-more-btn hidden">
+          ⬇️ Show Previous Leaks / Load More
+        </button>
+        <div id="leaksTelemetryText" class="pagination-telemetry text-muted"></div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         TAB 5: ONION TARGET MATRIX
+         ======================================================== -->
+    <section id="targetsTab" class="tab-content">
+      <div class="section-toolbar">
+        <div class="toolbar-title">
+          <h2>Onion Target Matrix</h2>
+          <p class="subtitle">Real-time health, Tor circuit round-trip latency, and liveness status</p>
+        </div>
+        <div class="toolbar-actions">
+          <select id="targetCategoryFilter" class="select-input">
+            <option value="All">All Target Types</option>
+            <option value="Data Leak Site">Data Leak Sites (DLS)</option>
+            <option value="Underground Forum">Underground Forums</option>
+            <option value="Search Engine">Search Engines</option>
+            <option value="Directory">Directories & Master Indexes</option>
+            <option value="Tool / AI">Tools & AI Systems</option>
+            <option value="Service / Media">Services & Media</option>
+          </select>
+          <select id="targetStatusFilter" class="select-input">
+            <option value="All">All Statuses</option>
+            <option value="ONLINE">🟢 Online</option>
+            <option value="OFFLINE">🔴 Offline</option>
+            <option value="UNKNOWN">⚪ Unknown / Unchecked</option>
+          </select>
+          <button id="openAddTargetModalBtn" class="primary-btn">+ Add Onion Link</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Target Name</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Tor Latency</th>
+              <th>Relevance</th>
+              <th>Onion Address</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="targetsTableBody">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         TAB 6: DISCOVERY & NOISE FILTER
+         ======================================================== -->
+    <section id="discoveryTab" class="tab-content">
+      <div class="discovery-header-card">
+        <div class="card-left">
+          <h3>Two-Tier Darknet Anti-Noise Engine</h3>
+          <p>
+            When links are harvested from darknet directories or search engines, our engine opens every candidate URL over Tor, 
+            inspects the inside page text, penalizes scam markets / counterfeit noise, and only admits high-relevance intelligence.
+          </p>
+        </div>
+        <div class="card-right">
+          <button id="harvestModalBtn" class="secondary-btn">📡 Harvest from Onion Directory</button>
+          <button id="batchValidateBtn" class="primary-btn">⚡ Run Anti-Noise Inspection Batch</button>
+        </div>
+      </div>
+
+      <div class="section-toolbar">
+        <div class="toolbar-title">
+          <h3>Harvested Candidate Queue</h3>
+        </div>
+        <div class="toolbar-actions">
+          <div class="pill-group" id="discoveryFilterPills">
+            <button class="pill active" data-val="All">All</button>
+            <button class="pill" data-val="VALIDATED_ONLINE">✅ Validated Online</button>
+            <button class="pill" data-val="REJECTED_NOISE">🛡️ Blocked Noise</button>
+            <button class="pill" data-val="PENDING">⏳ Pending Probe</button>
+            <button class="pill" data-val="OFFLINE">❌ Offline</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Candidate Onion URL</th>
+              <th>Status</th>
+              <th>Relevance Score</th>
+              <th>Inspection Verdict / Reason</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="discoveryTableBody">
+            <!-- Rendered dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         TAB 7: SETTINGS & CREDENTIAL SECURITY (FULL MASKING)
+         ======================================================== -->
+    <section id="settingsTab" class="tab-content">
+      <div class="settings-grid">
+        <!-- Telegram Bot Settings Card -->
+        <div class="settings-card">
+          <div class="card-header">
+            <h3>🐺 Telegram Bot Integration (@egyblackwolfbot)</h3>
+            <span class="badge badge-success" id="tgConfiguredBadge">✓ Protected & Encrypted</span>
+          </div>
+          <p class="settings-desc">
+            Direct high-priority alert pipeline sending critical Middle East & Germany data leaks and threat disclosures to Hossam.
+          </p>
+
+          <form id="settingsForm" class="settings-form">
+            <div class="form-group">
+              <label>Bot HTTP API Token</label>
+              <div class="password-wrap">
+                <input type="password" id="tgBotTokenInput" placeholder="••••••••••••••••••••••••••••••••••••" autocomplete="new-password">
+                <button type="button" class="eye-toggle-btn" id="toggleBotTokenEye" title="Toggle Show/Hide">👁️</button>
+              </div>
+              <span class="hint">Stored securely on local server. Completely masked for privacy and public sharing.</span>
+            </div>
+
+            <div class="form-group">
+              <label>Telegram Chat ID</label>
+              <div class="password-wrap">
+                <input type="password" id="tgChatIdInput" placeholder="••••••••••" autocomplete="new-password">
+                <button type="button" class="eye-toggle-btn" id="toggleChatIdEye" title="Toggle Show/Hide">👁️</button>
+              </div>
+              <span class="hint">Your private Telegram recipient ID (Hossam / @Aclies). Masked for screen privacy.</span>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Urgency Alert Threshold (0-100)</label>
+                <input type="number" id="alertThresholdInput" min="0" max="100" value="75">
+              </div>
+              <div class="form-group">
+                <label>Anti-Noise Relevance Cutoff</label>
+                <input type="number" id="relevanceCutoffInput" min="10" max="80" value="25">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="secondary-btn">Save Configurations</button>
+              <button type="button" id="testTgAlertBtn" class="primary-btn">📲 Dispatch Test Alert</button>
+            </div>
+            <div id="tgStatusMsg" class="status-msg"></div>
+          </form>
+        </div>
+
+        <!-- Tor Network & Gateway Card -->
+        <div class="settings-card">
+          <div class="card-header">
+            <h3>🧅 Tor SOCKS5h Gateway Diagnostics</h3>
+            <span class="badge" id="torCardBadge">Operational</span>
+          </div>
+          <p class="settings-desc">
+            All requests strictly route through Tor's local SOCKS5h proxy (port 9050) with remote DNS resolution to guarantee zero clear-net IP leakage.
+          </p>
+
+          <div class="tor-info-box">
+            <div class="info-row">
+              <span>SOCKS5h Proxy:</span>
+              <code>socks5h://127.0.0.1:9050</code>
+            </div>
+            <div class="info-row">
+              <span>Tor Routing Status:</span>
+              <strong id="torInfoRouting" class="text-accent-green">Active</strong>
+            </div>
+            <div class="info-row">
+              <span>Tor Exit Node IP:</span>
+              <code id="torInfoExitIp">Detecting...</code>
+            </div>
+            <div class="info-row">
+              <span>Network Latency:</span>
+              <strong id="torInfoLatency">-- ms</strong>
+            </div>
+          </div>
+
+          <button id="refreshTorBtn" class="secondary-btn" style="margin-top: 1rem;">🔄 Refresh Tor Circuit</button>
+        </div>
+
+        <!-- 24/7 Autonomous Sentinel Watchdog & Keyword Alerts Card -->
+        <div class="settings-card full-width">
+          <div class="card-header">
+            <h3>🤖 24/7 Autonomous Sentinel Watchdog & Keyword Alerts</h3>
+            <span class="badge badge-success" id="watchdogStatusCardBadge">● Running Autonomous Polling</span>
+          </div>
+          <p class="settings-desc">
+            Continuous background monitor querying monitored ransomware DLS and breach/pwn forums every N minutes. If newly disclosed leaks match any of your active watchlist keywords below, it immediately dispatches an urgent Telegram alert to @egyblackwolfbot.
+          </p>
+
+          <div class="watchdog-controls-row">
+            <div class="watchdog-stat-pill">
+              <span class="label">Cycle Interval:</span>
+              <select id="watchdogIntervalSelect" class="select-input select-sm">
+                <option value="600">10 Minutes</option>
+                <option value="900" selected>15 Minutes (Default)</option>
+                <option value="1800">30 Minutes</option>
+                <option value="3600">1 Hour</option>
+              </select>
+            </div>
+            <div class="watchdog-stat-pill">
+              <span class="label">Total Cycles:</span>
+              <strong id="watchdogTotalCycles">0</strong>
+            </div>
+            <div class="watchdog-stat-pill">
+              <span class="label">Alerts Dispatched:</span>
+              <strong id="watchdogAlertsSent" class="text-accent-red">0</strong>
+            </div>
+            <div class="watchdog-stat-pill">
+              <span class="label">Last Run:</span>
+              <span id="watchdogLastRunTime" class="text-muted font-mono">Just started</span>
+            </div>
+            <div class="watchdog-actions">
+              <button id="toggleWatchdogBtn" class="pill-btn danger">Pause Watchdog</button>
+              <button id="triggerWatchdogNowBtn" class="primary-btn btn-sm">⚡ Run Instant Scan Cycle</button>
+            </div>
+          </div>
+
+          <!-- Watchlist Keywords Manager -->
+          <div class="watchlist-manager-box" style="margin-top: 1.5rem;">
+            <div class="sub-header-row">
+              <h4>🎯 Proactive Threat Watchlist Keywords</h4>
+              <span class="text-muted">Leaks matching these terms immediately trigger high-priority alerts</span>
+            </div>
+
+            <!-- Add Keyword Form -->
+            <form id="addWatchlistForm" class="add-keyword-form">
+              <input type="text" id="newKeywordInput" placeholder="New keyword to watch (e.g. "Egypt", "Telecom", "SCADA", "Cisco")..." required>
+              <input type="text" id="newKeywordCategory" placeholder="Category (e.g. Critical Infrastructure)" value="National Security">
+              <button type="submit" class="primary-btn btn-sm">➕ Add Watchword</button>
+            </form>
+
+            <div class="keywords-pill-grid" id="watchlistKeywordsGrid">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Cache & Local Intelligence Memory Management Card -->
+        <div class="settings-card full-width">
+          <div class="card-header">
+            <h3>🗑️ Intelligence Memory & Cache Management</h3>
+            <span class="badge" id="cacheStatsBadge">Memory Active</span>
+          </div>
+          <p class="settings-desc">
+            Safely purge cached deep reconnaissance operations, flush BM25 search indices, clear discarded anti-noise queues, or reset all temporary session data.
+          </p>
+
+          <div class="cache-actions-grid">
+            <div class="cache-action-card">
+              <h4>📁 Recon Operations Cache</h4>
+              <p>Clears cached operations in <code>data/search_operations.json</code> and table <code>recon_operations</code>.</p>
+              <button id="clearReconCacheBtn" class="secondary-btn btn-sm">Clear Recon History</button>
+            </div>
+            <div class="cache-action-card">
+              <h4>🔍 BM25 Search Index</h4>
+              <p>Flushes SQLite FTS5 full-text index and indexed pages cache.</p>
+              <button id="clearIndexedCacheBtn" class="secondary-btn btn-sm">Flush BM25 Index</button>
+            </div>
+            <div class="cache-action-card">
+              <h4>🛡️ Discovery Noise Queue</h4>
+              <p>Purges pending unvalidated links and rejected scam/noise links.</p>
+              <button id="clearDiscoveryCacheBtn" class="secondary-btn btn-sm">Purge Discovery Queue</button>
+            </div>
+            <div class="cache-action-card border-danger">
+              <h4>💥 Complete System Reset</h4>
+              <p>Clears all cached recon operations, BM25 indices, and unapproved queues.</p>
+              <button id="clearAllCacheBtn" class="pill-btn danger btn-sm">Clear All Cached Data</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================
+       MODALS
+       ======================================================== -->
+
+  <!-- MODAL 1: DEEP ONION INSPECTOR & TECHNICAL FINGERPRINT (POINT 4) -->
+  <div id="inspectEngineModal" class="modal-backdrop">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <h3>🔬 Deep Onion Inspector & Technical Fingerprint</h3>
+        <button class="close-modal-btn" data-close="inspectEngineModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Dual Inspector View Mode Switch -->
+        <div class="inspector-tabs">
+          <button class="insp-tab-btn active" id="inspTabHtmlBtn">🌐 Page Content & Links</button>
+          <button class="insp-tab-btn" id="inspTabTechBtn">🔬 Technical Fingerprint & HTTP Headers</button>
+        </div>
+
+        <!-- Meta Summary -->
+        <div class="engine-meta-box">
+          <div class="meta-item">
+            <span class="meta-label">Detected Type:</span>
+            <span class="badge badge-accent" id="inspectEngineType">Search Engine</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Title / Name:</span>
+            <strong id="inspectEngineTitle">Darknet Search Portal</strong>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Onion Address:</span>
+            <code id="inspectEngineUrl" class="text-mono">http://[...].onion</code>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Tor Latency:</span>
+            <span id="inspectEngineLatency">-- ms</span>
+          </div>
+        </div>
+
+        <!-- View 1: HTML Snippet & Preview -->
+        <div id="inspHtmlView" class="inspector-view active">
+          <div class="form-group" style="margin-top: 1rem;">
+            <label>Scraped HTML Snippet / Form Indicators:</label>
+            <div class="code-snippet-box" id="inspectEngineSnippet">
+              Loading preview snippet...
+            </div>
+          </div>
+        </div>
+
+        <!-- View 2: Technical Fingerprint & Headers (Point 4) -->
+        <div id="inspTechView" class="inspector-view hidden">
+          <div class="fingerprint-grid" style="margin-top: 1rem;">
+            <div class="fp-card">
+              <span class="fp-label">Web Server Banner:</span>
+              <strong id="fpServerBanner" class="font-mono text-accent-blue">Probing...</strong>
+            </div>
+            <div class="fp-card">
+              <span class="fp-label">Detected Technologies:</span>
+              <div id="fpTechStack" class="tags-wrap">Scanning...</div>
+            </div>
+            <div class="fp-card">
+              <span class="fp-label">Favicon MurmurHash3 (Shodan/Censys):</span>
+              <div class="hash-copy-wrap">
+                <code id="fpMurmurHash">--</code>
+                <button type="button" class="btn-copy-hash" id="copyShodanQueryBtn" title="Copy Shodan Query">📋 Copy Shodan Query</button>
+              </div>
+            </div>
+            <div class="fp-card">
+              <span class="fp-label">PGP Public Key Block:</span>
+              <div class="pgp-box-wrap">
+                <pre id="fpPgpBlock" class="pgp-pre">Scanning page for PGP armored blocks...</pre>
+                <button type="button" class="btn-copy-pgp" id="copyPgpBtn">📋 Copy PGP</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- HTTP Headers Table -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <label>Sanitized HTTP Response Headers:</label>
+            <div class="table-container max-h-200">
+              <table class="data-table">
+                <thead>
+                  <tr><th>Header Key</th><th>Value</th></tr>
+                </thead>
+                <tbody id="fpHeadersTableBody">
+                  <tr><td colspan="2" class="text-muted">Click "Technical Fingerprint" tab to load headers...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 1.2rem;">
+          <label>Assign Monitoring Category:</label>
+          <select id="inspectAssignCategory" class="select-input">
+            <option value="Search Engine">Search Engine</option>
+            <option value="Directory">Directory / Master List</option>
+            <option value="Underground Forum">Underground Forum</option>
+            <option value="Data Leak Site">Data Leak Site</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" id="dismissEngineBtn">Dismiss / Skip</button>
+          <button type="button" class="primary-btn" id="confirmAddEngineBtn">⚡ Add Directly to Active Target Pool</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD LEAK FORUM / THREAT SOURCE -->
+  <div id="addForumModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>➕ Add Leak Forum or Ransomware Target</h3>
+        <button class="close-modal-btn" data-close="addForumModal">&times;</button>
+      </div>
+      <form id="addForumForm">
+        <div class="form-group">
+          <label>Forum / Threat Group Name</label>
+          <input type="text" id="newForumName" placeholder="e.g. BreachForums v4, RansomHub DLS, Pwned Hub" required>
+        </div>
+        <div class="form-group">
+          <label>Onion Address (.onion URL)</label>
+          <input type="text" id="newForumUrl" placeholder="http://[56-character-hash].onion" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Source Category</label>
+            <select id="newForumCategory" class="select-input">
+              <option value="Data Leak Site">Ransomware DLS</option>
+              <option value="Underground Forum">Breach / Pwn Forum</option>
+              <option value="Cyber Warfare">Cyber Warfare / State Disclosures</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Threat Priority Score (1-100)</label>
+            <input type="number" id="newForumScore" value="90" min="1" max="100">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Primary Focus Axis</label>
+            <select id="newForumCountry" class="select-input">
+              <option value="Egypt">🇪🇬 Egypt</option>
+              <option value="Iran">🇮🇷 Iran</option>
+              <option value="Israel">🇮🇱 Israel</option>
+              <option value="Germany">🇩🇪 Germany</option>
+              <option value="Regional" selected>🌐 Regional Middle East</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Primary Sector</label>
+            <select id="newForumSector" class="select-input">
+              <option value="Telecom">Telecom</option>
+              <option value="Defense">Defense</option>
+              <option value="Energy">Energy & SCADA</option>
+              <option value="Finance">Finance</option>
+              <option value="Logistics">Logistics</option>
+              <option value="Enterprise Infrastructure" selected>General Enterprise</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" data-close="addForumModal">Cancel</button>
+          <button type="submit" class="primary-btn">Save & Register Forum</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EXPORT OSINT DOSSIER (POINT 1) -->
+  <div id="exportDossierModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>📄 Export OSINT Intelligence Dossier</h3>
+        <button class="close-modal-btn" data-close="exportDossierModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sub">Select the desired report format for your investigation findings:</p>
+        <div class="export-options-grid">
+          <div class="export-option-card" id="exportHtmlCard" data-format="html">
+            <div class="exp-icon">📑</div>
+            <h4>Executive Printable Dossier (PDF)</h4>
+            <p>Formatted dark-mode intelligence report with classification markings, printable via browser to high-res PDF.</p>
+          </div>
+          <div class="export-option-card" id="exportCsvCard" data-format="csv">
+            <div class="exp-icon">📊</div>
+            <h4>Excel / CSV Spreadsheet</h4>
+            <p>Tabular export of all disclosed entities, onion evidence hashes, sectors, and breach sizes.</p>
+          </div>
+          <div class="export-option-card" id="exportJsonCard" data-format="json">
+            <div class="exp-icon">💻</div>
+            <h4>Raw Forensic JSON Evidence</h4>
+            <p>Machine-readable JSON schema for incident responders, SIEM ingestion, and chain of custody.</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" data-close="exportDossierModal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CLEAR CACHE CONFIRMATION -->
+  <div id="clearCacheModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>🗑️ Confirm Intelligence Cache Flush</h3>
+        <button class="close-modal-btn" data-close="clearCacheModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="clearCacheModalText">Are you sure you want to purge the cached operations?</p>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" data-close="clearCacheModal">Cancel</button>
+          <button type="button" class="pill-btn danger" id="confirmClearCacheBtn">Yes, Purge Cache</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ADD ONION TARGET -->
+  <div id="addTargetModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Add Onion Link / Search Engine</h3>
+        <button class="close-modal-btn" data-close="addTargetModal">&times;</button>
+      </div>
+      <form id="addTargetForm">
+        <div class="form-group">
+          <label>Onion Address (.onion URL)</label>
+          <input type="text" id="newTargetUrl" placeholder="http://[56-character-hash].onion" required>
+        </div>
+        <div class="form-group">
+          <label>Custom Name / Label (Optional)</label>
+          <input type="text" id="newTargetName" placeholder="e.g. Threat Intelligence Exchange">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="newTargetCategory" class="select-input">
+            <option value="Data Leak Site">Data Leak Site (DLS)</option>
+            <option value="Search Engine">Search Engine</option>
+            <option value="Underground Forum">Underground Forum</option>
+            <option value="Directory">Directory / Master List</option>
+            <option value="Tool / AI">Tool / AI Portal</option>
+            <option value="Service / Media">Service / Media (Radio, Feeds)</option>
+          </select>
+        </div>
+        <div class="form-checkbox">
+          <input type="checkbox" id="probeOnAdd" checked>
+          <label for="probeOnAdd">Test Tor connection immediately (measures latency & fetches title)</label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" data-close="addTargetModal">Cancel</button>
+          <button type="submit" class="primary-btn">Save & Probe Target</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 3: LOG INTEL LEAK -->
+  <div id="addLeakModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Log Ransomware DLS or Breach Intel</h3>
+        <button class="close-modal-btn" data-close="addLeakModal">&times;</button>
+      </div>
+      <form id="addLeakForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Threat Group / DLS</label>
+            <input type="text" id="leakThreatGroup" placeholder="e.g. LockBit 3.0, RansomHub, DarkFox" required>
+          </div>
+          <div class="form-group">
+            <label>Victim Organization</label>
+            <input type="text" id="leakVictimName" placeholder="e.g. Regional Telecom Operator" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Victim Country</label>
+            <select id="leakCountry" class="select-input">
+              <option value="Egypt">🇪🇬 Egypt</option>
+              <option value="Iran">🇮🇷 Iran</option>
+              <option value="Israel">🇮🇱 Israel</option>
+              <option value="Germany">🇩🇪 Germany</option>
+              <option value="Regional">🌐 Regional Middle East</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Target Sector</label>
+            <select id="leakSector" class="select-input">
+              <option value="Defense">Defense & Military</option>
+              <option value="Government">Government & Intelligence</option>
+              <option value="Telecom">Telecommunications</option>
+              <option value="Energy">Energy & SCADA</option>
+              <option value="Finance">Banking & Finance</option>
+              <option value="Logistics">Maritime & Logistics</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Data Size (GB)</label>
+            <input type="number" step="0.1" id="leakSize" value="15.0">
+          </div>
+          <div class="form-group">
+            <label>Urgency Score (0-100)</label>
+            <input type="number" id="leakScore" value="85" min="0" max="100">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Evidence Onion URL</label>
+          <input type="text" id="leakEvidenceUrl" placeholder="http://[56-chars].onion/leaks" required>
+        </div>
+        <div class="form-group">
+          <label>Intelligence Description</label>
+          <textarea id="leakDescription" rows="3" placeholder="Summary of compromised databases, CAD schematics, credentials, etc." required></textarea>
+        </div>
+        <div class="form-checkbox">
+          <input type="checkbox" id="leakNotifyTg" checked>
+          <label for="leakNotifyTg">Send immediate Telegram alert to @egyblackwolfbot</label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" data-close="addLeakModal">Cancel</button>
+          <button type="submit" class="primary-btn">Save & Notify</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 4: HARVEST FROM ONION DIRECTORY -->
+  <div id="harvestModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>Harvest Onion Links from Directory</h3>
+        <button class="close-modal-btn" data-close="harvestModal">&times;</button>
+      </div>
+      <form id="harvestForm">
+        <div class="form-group">
+          <label>Source Directory Onion URL</label>
+          <input type="text" id="harvestSourceUrl" placeholder="http://[hidden-wiki-or-link-list].onion" value="http://3q6ytxkudm5zeaje3xg7sg6ogzqy6bugchpshwgvj6ckao4m3u2dsgyd.onion" required>
+          <span class="hint">The engine routes through Tor, scrapes all embedded v3 .onion links, and queues them for anti-noise validation.</span>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" data-close="harvestModal">Cancel</button>
+          <button type="submit" class="primary-btn" id="startHarvestBtn">Start Harvesting</button>
+        </div>
+      </form>
+    </div>
+  <!-- MODAL: ADD CUSTOM SEARCH ENGINE / DIRECTORY -->
+  <div id="addEngineModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>➕ Add Darknet Search Engine / Directory</h3>
+        <button class="close-modal-btn" data-close="addEngineModal">&times;</button>
+      </div>
+      <form id="addEngineForm">
+        <div class="form-group">
+          <label>Engine / Directory Name</label>
+          <input type="text" id="newEngineName" placeholder="e.g. Haystak Pro, Darknet Indexer, TorDir" required>
+        </div>
+        <div class="form-group">
+          <label>Service Onion Address (.onion URL)</label>
+          <input type="text" id="newEngineUrl" placeholder="http://[56-character-hash].onion" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Service Type</label>
+            <select id="newEngineType" class="select-input">
+              <option value="Search Engine">🔍 Search Engine</option>
+              <option value="Directory">📁 Directory & Master Index</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Initial Status</label>
+            <select id="newEngineStatus" class="select-input">
+              <option value="UNKNOWN">⚪ Unknown / Unchecked</option>
+              <option value="ONLINE">🟢 Online</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Description / Query Parameters</label>
+          <input type="text" id="newEngineDesc" placeholder="e.g. /search?q={query} or curated breach directory">
+        </div>
+        <div class="form-checkbox">
+          <input type="checkbox" id="newEngineFederate" checked>
+          <label for="newEngineFederate">Federate immediately into live 15-Engine Search Matrix & Monitored Targets</label>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" data-close="addEngineModal">Cancel</button>
+          <button type="submit" class="primary-btn" id="saveEngineBtn">Save & Register Engine</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD MONITORED TELEGRAM CHANNEL -->
+  <div id="addTelegramModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>📱 Add Monitored Telegram Threat Channel</h3>
+        <button class="close-modal-btn" data-close="addTelegramModal">&times;</button>
+      </div>
+      <form id="addTelegramForm">
+        <div class="form-group">
+          <label>Channel Name / Threat Group</label>
+          <input type="text" id="newTgName" placeholder="e.g. DarkArmy Intel, Breach Repo" required>
+        </div>
+        <div class="form-group">
+          <label>Telegram Handle, URL or Private Invite</label>
+          <input type="text" id="newTgHandle" placeholder="e.g. @darkarmyofficial, https://t.me/HFMTMC, or https://t.me/+HLqul..." required>
+          <span class="hint">Public channels will be scraped automatically via web previews. Private invites are tracked for active disclosures.</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Intel Category</label>
+            <select id="newTgCategory" class="select-input">
+              <option value="Threat Intel & Leaks">🚨 Threat Intel & Leaks</option>
+              <option value="Threat Group Announcements">🏴 Threat Group Channel</option>
+              <option value="Credential Dumps">🔑 Credential Dumps & Combos</option>
+              <option value="Exploits & Cyber Warfare">⚔️ Exploits & Cyber Warfare</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Channel Type</label>
+            <select id="newTgIsPrivate" class="select-input">
+              <option value="0">🌐 Public Channel / Group</option>
+              <option value="1">🔒 Private Group / Invite Hash</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Notes / Threat Actor Intel</label>
+          <input type="text" id="newTgNotes" placeholder="e.g. Active ransomware affiliate channel, frequent SQL dumps">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn" data-close="addTelegramModal">Cancel</button>
+          <button type="submit" class="primary-btn" id="saveTgChannelBtn">Save & Monitor Channel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Backend Configuration Modal -->
+  <div id="backendModal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3>⚡ Sentinel Backend Connection</h3>
+        <button class="modal-close-btn" onclick="window.closeBackendModal()">×</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem 1.5rem;">
+        <p class="text-sub" style="font-size: 0.85rem; margin-bottom: 1rem;">
+          When accessing from GitHub Pages or remote devices, configure the live Cloudflare Tunnel URL pointing to your Sentinel backend server.
+        </p>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.4rem;">Live Backend API URL:</label>
+          <input type="text" id="backendUrlInput" class="text-input" style="width: 100%;" placeholder="https://xxxx.trycloudflare.com" />
+        </div>
+        <div id="backendPingResult" style="font-size: 0.82rem; min-height: 24px; padding: 4px 0;"></div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem;">
+        <button type="button" class="secondary-btn" onclick="window.resetBackendDefault()">Reset Default</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="secondary-btn" onclick="window.closeBackendModal()">Cancel</button>
+          <button type="button" class="primary-btn" onclick="window.testAndSaveBackend()">Test & Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

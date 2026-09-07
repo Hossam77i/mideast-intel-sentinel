@@ -384,6 +384,10 @@ def serve_favicon():
         return FileResponse(p)
     return JSONResponse(status_code=204, content=None)
 
+DARKWEB_STATIC_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "darkweb-sentinel", "static"))
+if os.path.exists(DARKWEB_STATIC_DIR):
+    app.mount("/darkweb", StaticFiles(directory=DARKWEB_STATIC_DIR, html=True), name="darkweb")
+
 # --- CROSS-SENTINEL ROUTE PROXIES TO DARKNET SENTINEL ---
 DARKWEB_LOCAL_URL = os.getenv("DARKWEB_LOCAL_URL", "http://127.0.0.1:8080")
 
