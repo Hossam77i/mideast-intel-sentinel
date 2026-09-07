@@ -49,23 +49,26 @@ app.add_middleware(
 
 @app.get("/api/public-url")
 def api_public_url():
-    mideast_url = ""
-    darkweb_url = ""
-    try:
-        if os.path.exists("/var/run/sentinel-tunnels.json"):
-            with open("/var/run/sentinel-tunnels.json", "r") as f:
-                data = json.load(f)
-                tunnels = data.get("tunnels", {})
-                mideast_url = tunnels.get("mideast", {}).get("public_url", "")
-                darkweb_url = tunnels.get("darkweb", {}).get("public_url", "")
-        if not mideast_url and os.path.exists("/var/log/sentinel-tunnel.log"):
-            with open("/var/log/sentinel-tunnel.log", "r") as f:
-                content = f.read()
-                matches = re.findall(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", content)
-                if matches:
-                    mideast_url = matches[-1]
-    except Exception as e:
-        logger.error(f"Error reading tunnel log: {e}")
+    mideast_url = os.getenv("PUBLIC_URL") or os.getenv("MIDEAST_PUBLIC_URL") or ""
+    darkweb_url = os.getenv("DARKWEB_PUBLIC_URL") or ""
+    if not mideast_url or not darkweb_url:
+        try:
+            if os.path.exists("/var/run/sentinel-tunnels.json"):
+                with open("/var/run/sentinel-tunnels.json", "r") as f:
+                    data = json.load(f)
+                    tunnels = data.get("tunnels", {})
+                    if not mideast_url:
+                        mideast_url = tunnels.get("mideast", {}).get("public_url", "")
+                    if not darkweb_url:
+                        darkweb_url = tunnels.get("darkweb", {}).get("public_url", "")
+            if not mideast_url and os.path.exists("/var/log/sentinel-tunnel.log"):
+                with open("/var/log/sentinel-tunnel.log", "r", errors="ignore") as f:
+                    content = f.read()
+                    matches = re.findall(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", content)
+                    if matches:
+                        mideast_url = matches[-1]
+        except Exception as e:
+            logger.error(f"Error reading tunnel log: {e}")
     return {
         "public_url": mideast_url,
         "darkweb_url": darkweb_url,
@@ -382,7 +385,7 @@ def serve_favicon():
     return JSONResponse(status_code=204, content=None)
 
 # --- CROSS-SENTINEL ROUTE PROXIES TO DARKNET SENTINEL ---
-DARKWEB_LOCAL_URL = "http://127.0.0.1:8080"
+DARKWEB_LOCAL_URL = os.getenv("DARKWEB_LOCAL_URL", "http://127.0.0.1:8080")
 
 @app.api_route("/api/search", methods=["GET", "POST", "OPTIONS"])
 @app.api_route("/api/recon/{path:path}", methods=["GET", "POST", "OPTIONS"])
@@ -411,10 +414,12 @@ async def proxy_to_darkweb(request: Request, path: Optional[str] = None):
     async with httpx.AsyncClient(timeout=35.0) as client:
         try:
             resp = await client.request(method, target_url, headers=headers, content=body)
+            excluded_headers = {"content-length", "content-encoding", "transfer-encoding", "connection", "keep-alive"}
+            filtered_headers = {k: v for k, v in resp.headers.items() if k.lower() not in excluded_headers}
             return Response(
                 content=resp.content,
                 status_code=resp.status_code,
-                headers=dict(resp.headers),
+                headers=filtered_headers,
                 media_type=resp.headers.get("content-type")
             )
         except Exception as e:

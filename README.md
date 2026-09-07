@@ -1,3 +1,12 @@
+---
+title: Middle East Intel Sentinel
+emoji: 🛡️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
+
 # 🛡️ Middle East Intelligence Sentinel (OSINT & Threat Forecast Network)
 
 **Middle East Intelligence Sentinel** is an automated, lifetime threat intelligence tracking, analysis, and forecasting platform. It focuses specifically on military developments, wars, covert actions, and intelligence operations involving:
