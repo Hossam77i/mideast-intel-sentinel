@@ -61,6 +61,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def fix_vercel_rewrites(request: Request, call_next):
+    matched_path = request.headers.get("x-matched-path")
+    if matched_path and request.scope.get("path") == "/api/index.py":
+        request.scope["path"] = matched_path
+    return await call_next(request)
+
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     import traceback
