@@ -66,6 +66,8 @@ async def fix_vercel_rewrites(request: Request, call_next):
     matched_path = request.headers.get("x-matched-path")
     if matched_path and request.scope.get("path") == "/api/index.py":
         request.scope["path"] = matched_path
+    elif request.scope.get("path", "").startswith("/api/index.py/"):
+        request.scope["path"] = request.scope["path"][len("/api/index.py"):]
     return await call_next(request)
 
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -394,6 +396,7 @@ def api_daemon_stop():
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.api_route("/", methods=["GET", "HEAD"])
+@app.api_route("/api/index.py", methods=["GET", "HEAD"])
 def serve_index():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
