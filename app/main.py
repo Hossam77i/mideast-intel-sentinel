@@ -2,10 +2,12 @@ import os
 import re
 import json
 import logging
+import httpx
+from typing import Optional
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Query, Body
+from fastapi import FastAPI, HTTPException, Query, Body, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import (
@@ -350,3 +352,71 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 @app.api_route("/", methods=["GET", "HEAD"])
 def serve_index():
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+@app.api_route("/styles.css", methods=["GET", "HEAD"])
+def serve_styles():
+    p = os.path.join(STATIC_DIR, "styles.css")
+    if os.path.exists(p):
+        return FileResponse(p, media_type="text/css")
+    return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+@app.api_route("/app.js", methods=["GET", "HEAD"])
+def serve_app_js():
+    p = os.path.join(STATIC_DIR, "app.js")
+    if os.path.exists(p):
+        return FileResponse(p, media_type="application/javascript")
+    return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+@app.api_route("/vis-network.min.js", methods=["GET", "HEAD"])
+def serve_vis_js():
+    p = os.path.join(STATIC_DIR, "vis-network.min.js")
+    if os.path.exists(p):
+        return FileResponse(p, media_type="application/javascript")
+    return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+@app.api_route("/favicon.ico", methods=["GET", "HEAD"])
+def serve_favicon():
+    p = os.path.join(STATIC_DIR, "favicon.ico")
+    if os.path.exists(p):
+        return FileResponse(p)
+    return JSONResponse(status_code=204, content=None)
+
+# --- CROSS-SENTINEL ROUTE PROXIES TO DARKNET SENTINEL ---
+DARKWEB_LOCAL_URL = "http://127.0.0.1:8080"
+
+@app.api_route("/api/search", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/recon/{path:path}", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/directories/{path:path}", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/leaks", methods=["GET", "OPTIONS"])
+@app.api_route("/api/leaks/{path:path}", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/targets", methods=["GET", "OPTIONS"])
+@app.api_route("/api/targets/{path:path}", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/discovery", methods=["GET", "OPTIONS"])
+@app.api_route("/api/discovery/{path:path}", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/telegram/{path:path}", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/tor/{path:path}", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/cache/{path:path}", methods=["GET", "POST", "OPTIONS"])
+@app.api_route("/api/watchlist/{path:path}", methods=["GET", "POST", "OPTIONS"])
+async def proxy_to_darkweb(request: Request, path: Optional[str] = None):
+    """Transparently proxies Darknet Sentinel routes to local port 8080."""
+    req_path = request.url.path
+    target_url = f"{DARKWEB_LOCAL_URL}{req_path}"
+    if request.url.query:
+        target_url += f"?{request.url.query}"
+    
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
+    method = request.method
+    body = await request.body()
+    
+    async with httpx.AsyncClient(timeout=35.0) as client:
+        try:
+            resp = await client.request(method, target_url, headers=headers, content=body)
+            return Response(
+                content=resp.content,
+                status_code=resp.status_code,
+                headers=dict(resp.headers),
+                media_type=resp.headers.get("content-type")
+            )
+        except Exception as e:
+            logger.error(f"Error proxying to Darknet Sentinel ({target_url}): {e}")
+            raise HTTPException(status_code=502, detail=f"Darknet Backend Proxy Error: {str(e)}")

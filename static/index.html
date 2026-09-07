@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SENTINEL // Middle East Intelligence & Forecast Network</title>
-  <link rel="stylesheet" href="/static/styles.css" />
-  <script src="/static/vis-network.min.js"></script>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="./vis-network.min.js"></script>
 </head>
 <body>
   <!-- Top Navigation Header -->
@@ -39,6 +39,13 @@
       <a href="http://localhost:8080" id="darkweb-sentinel-link" target="_blank" class="nav-switch-btn" title="Switch to Egypt Black Wolf Darknet Sentinel">
         <span>🐺</span> Darknet Sentinel (8080)
       </a>
+
+      <!-- Backend Connection Pill -->
+      <div id="backendPill" class="nav-switch-btn" onclick="openBackendModal()" style="cursor:pointer; display:inline-flex; align-items:center; gap:6px;" title="Configure Live Backend URL">
+        <span class="pulse-dot green" id="backendPillDot" style="width:8px;height:8px;"></span>
+        <span id="backendPillText">Backend: Online</span>
+        <span style="font-size:0.75rem;opacity:0.6;">⚙️</span>
+      </div>
 
       <!-- Dark / Light Mode Toggle -->
       <button class="btn-theme-toggle" id="btn-theme-toggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
@@ -566,6 +573,33 @@
     </div>
   </div>
 
-  <script src="/static/app.js"></script>
+  <!-- Backend Configuration Modal -->
+  <div id="backendModal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 class="text-sm font-bold text-white">⚡ Sentinel Backend Connection</h3>
+        <button class="modal-close" onclick="closeBackendModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 1rem 1.5rem;">
+        <p class="text-xs text-slate-300" style="margin-bottom: 1rem;">
+          When accessing from GitHub Pages or remote devices, configure the live Cloudflare Tunnel URL pointing to your Sentinel backend server.
+        </p>
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label class="text-xs font-semibold block mb-1">Live Backend API URL:</label>
+          <input type="text" id="backendUrlInput" style="width: 100%;" placeholder="https://xxxx.trycloudflare.com" />
+        </div>
+        <div id="backendPingResult" style="font-size: 0.82rem; min-height: 24px; padding: 4px 0;"></div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem;">
+        <button type="button" class="btn btn-outline" onclick="resetBackendDefault()">Reset Default</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-outline" onclick="closeBackendModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="testAndSaveBackend()">Test & Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
 </body>
 </html>
