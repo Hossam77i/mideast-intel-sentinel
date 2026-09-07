@@ -498,6 +498,7 @@ async def proxy_to_darkweb(request: Request, path: Optional[str] = None):
 
 @app.get("/api/darkweb/stats")
 async def proxy_darkweb_stats(request: Request):
-    req = Request(scope=dict(request.scope, path="/api/stats"))
-    return await proxy_to_darkweb(req)
+    request.scope["path"] = "/api/stats"
+    return await proxy_to_darkweb(request)
+
 
