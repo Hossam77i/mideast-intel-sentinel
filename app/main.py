@@ -63,11 +63,15 @@ app.add_middleware(
 
 @app.middleware("http")
 async def fix_vercel_rewrites(request: Request, call_next):
-    matched_path = request.headers.get("x-matched-path")
-    if matched_path and request.scope.get("path") == "/api/index.py":
-        request.scope["path"] = matched_path
-    elif request.scope.get("path", "").startswith("/api/index.py/"):
-        request.scope["path"] = request.scope["path"][len("/api/index.py"):]
+    route_path = request.query_params.get("_route_path")
+    if route_path:
+        request.scope["path"] = route_path
+    else:
+        matched_path = request.headers.get("x-matched-path")
+        if matched_path and request.scope.get("path") == "/api/index.py":
+            request.scope["path"] = matched_path
+        elif request.scope.get("path", "").startswith("/api/index.py/"):
+            request.scope["path"] = request.scope["path"][len("/api/index.py"):]
     return await call_next(request)
 
 from starlette.exceptions import HTTPException as StarletteHTTPException
