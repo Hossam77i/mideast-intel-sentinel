@@ -9,6 +9,10 @@ app_port: 7860
 
 # 🛡️ Middle East Intelligence Sentinel (OSINT & Threat Forecast Network)
 
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Hossam77i/mideast-intel-sentinel)
+
 **Middle East Intelligence Sentinel** is an automated, lifetime threat intelligence tracking, analysis, and forecasting platform. It focuses specifically on military developments, wars, covert actions, and intelligence operations involving:
 - 🇮🇷 **Iran** (IRGC, Quds Force, nuclear centrifuges, ballistic & drone arsenals, proxy coordination)
 - 🇮🇱 **Israel** (IDF, Mossad, Shin Bet, multi-tier air defense, precision strikes)
