@@ -27,10 +27,22 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "static")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
-    daemon_instance.start()
+    try:
+        init_db()
+    except Exception as e:
+        logger.warning(f"init_db in lifespan: {e}")
+        
+    if not os.environ.get("VERCEL") and not os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        try:
+            daemon_instance.start()
+        except Exception as e:
+            logger.warning(f"daemon start: {e}")
     yield
-    daemon_instance.stop()
+    if not os.environ.get("VERCEL") and not os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        try:
+            daemon_instance.stop()
+        except Exception:
+            pass
 
 app = FastAPI(
     title="Middle East Intelligence Sentinel",

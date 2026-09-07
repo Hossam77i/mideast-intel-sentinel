@@ -4,11 +4,42 @@ import hashlib
 from datetime import datetime, timezone
 import os
 
-DB_PATH = os.environ.get("SENTINEL_DB_PATH", os.path.join(os.path.dirname(__file__), "..", "data", "sentinel.db"))
+import shutil
+
+ORIGINAL_DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+ORIGINAL_DB_PATH = os.path.join(ORIGINAL_DATA_DIR, "sentinel.db")
+SEED_DB_PATH = os.path.join(ORIGINAL_DATA_DIR, "seed_sentinel.db")
+
+IS_SERVERLESS = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME") or not os.access(os.path.dirname(ORIGINAL_DATA_DIR), os.W_OK))
+
+if IS_SERVERLESS:
+    DATA_DIR = "/tmp/sentinel_data"
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except Exception:
+        pass
+    DB_PATH = os.path.join(DATA_DIR, "sentinel.db")
+    if not os.path.exists(DB_PATH):
+        source_seed = SEED_DB_PATH if os.path.exists(SEED_DB_PATH) else (ORIGINAL_DB_PATH if os.path.exists(ORIGINAL_DB_PATH) else None)
+        if source_seed:
+            try:
+                shutil.copyfile(source_seed, DB_PATH)
+            except Exception:
+                pass
+else:
+    DATA_DIR = ORIGINAL_DATA_DIR
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except Exception:
+        pass
+    DB_PATH = os.environ.get("SENTINEL_DB_PATH", ORIGINAL_DB_PATH)
 
 def get_connection():
-    os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
+    except Exception:
+        pass
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     return conn
 
