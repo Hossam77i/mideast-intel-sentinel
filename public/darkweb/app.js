@@ -175,7 +175,15 @@ window.openTorModal = async function() {
   }
   if (res) { res.className = "tor-test-box hidden"; res.innerHTML = ""; }
 
-  const localSaved = localStorage.getItem(STORAGE_TOR_PROXY_KEY);
+  const isCloud = window.location.hostname.includes("vercel.app") || window.location.hostname.includes("github.io");
+  let localSaved = localStorage.getItem(STORAGE_TOR_PROXY_KEY);
+
+  // If running on remote cloud, automatically default loopback proxies to tor2web
+  if (isCloud && (!localSaved || localSaved.includes("127.0.0.1") || localSaved.includes("localhost"))) {
+    localSaved = "tor2web";
+    localStorage.setItem(STORAGE_TOR_PROXY_KEY, "tor2web");
+  }
+
   if (localSaved) {
     if (input) input.value = localSaved;
     window.selectTorMode(localSaved === "tor2web" ? "tor2web" : "custom");
@@ -184,7 +192,10 @@ window.openTorModal = async function() {
       const resp = await apiFetch("/api/tor/config");
       if (resp.ok) {
         const cfg = await resp.json();
-        const preferredProxy = cfg.proxy_url || "tor2web";
+        let preferredProxy = cfg.proxy_url || "tor2web";
+        if (isCloud && (preferredProxy.includes("127.0.0.1") || preferredProxy.includes("localhost"))) {
+          preferredProxy = "tor2web";
+        }
         if (input) input.value = preferredProxy;
         window.selectTorMode(preferredProxy === "tor2web" ? "tor2web" : "custom");
       }
@@ -207,19 +218,24 @@ window.closeTorModal = function() {
 window.selectTorMode = function(mode) {
   const customBtn = document.getElementById("torModeCustomBtn");
   const gatewayBtn = document.getElementById("torModeGatewayBtn");
+  const gatewayInfo = document.getElementById("torGatewayInfoBox");
   const inputGroup = document.getElementById("torProxyInputGroup");
   const input = document.getElementById("torProxyInput");
+  const res = document.getElementById("torTestResult");
+  if (res) { res.className = "tor-test-box hidden"; res.innerHTML = ""; }
 
   if (mode === "tor2web") {
     if (gatewayBtn) gatewayBtn.classList.add("active-mode");
     if (customBtn) customBtn.classList.remove("active-mode");
+    if (gatewayInfo) gatewayInfo.classList.remove("hidden");
+    if (inputGroup) inputGroup.classList.add("hidden");
     if (input) input.value = "tor2web";
-    if (inputGroup) inputGroup.style.opacity = "0.6";
   } else {
     if (customBtn) customBtn.classList.add("active-mode");
     if (gatewayBtn) gatewayBtn.classList.remove("active-mode");
+    if (gatewayInfo) gatewayInfo.classList.add("hidden");
+    if (inputGroup) inputGroup.classList.remove("hidden");
     if (input && input.value === "tor2web") input.value = "socks5h://127.0.0.1:9050";
-    if (inputGroup) inputGroup.style.opacity = "1";
   }
 };
 
@@ -236,9 +252,10 @@ window.resetTorDefault = function() {
 };
 
 window.testTorConnection = async function() {
+  const isGateway = document.getElementById("torModeGatewayBtn")?.classList.contains("active-mode");
   const input = document.getElementById("torProxyInput");
   const res = document.getElementById("torTestResult");
-  const proxy = input ? input.value.trim() : "tor2web";
+  const proxy = isGateway ? "tor2web" : (input ? input.value.trim() : "tor2web");
 
   if (res) {
     res.className = "tor-test-box";
@@ -263,10 +280,19 @@ window.testTorConnection = async function() {
     } else {
       if (res) {
         res.className = "tor-test-box error";
+        const isCloud = window.location.hostname.includes("vercel.app") || window.location.hostname.includes("github.io");
+        const isLoopback = proxy.includes("127.0.0.1") || proxy.includes("localhost");
         res.innerHTML = `
           <div style="font-weight:600;color:var(--accent-red);margin-bottom:4px;">🔴 Tor Connection Failed</div>
-          <div style="margin-bottom:4px;"><strong>Diagnostic:</strong> ${data.error || 'Connection timed out'}</div>
-          <div style="font-size:0.75rem;opacity:0.85;">💡 <em>${data.tip || 'Tip: If using local Tor Browser, set to socks5h://127.0.0.1:9150, or choose Tor2Web Cloud Gateway.'}</em></div>
+          <div style="margin-bottom:4px;word-break:break-all;"><strong>Diagnostic:</strong> ${data.error || 'Connection refused or timed out'}</div>
+          <div style="font-size:0.75rem;opacity:0.85;margin-bottom:8px;">💡 <em>${data.tip || 'A remote cloud server cannot reach 127.0.0.1 on your home PC.'}</em></div>
+          ${(isCloud && isLoopback) ? `
+            <div style="margin-top:8px;">
+              <button type="button" class="primary-btn btn-sm" onclick="window.quickConnectTor('tor2web');" style="width:100%;font-size:0.8rem;padding:0.5rem 1rem;">
+                ⚡ Switch to Tor2Web Cloud Relay & Connect Now (Instant Fix)
+              </button>
+            </div>
+          ` : ''}
         `;
       }
     }
@@ -279,9 +305,26 @@ window.testTorConnection = async function() {
 };
 
 window.saveTorConfig = async function() {
+  const isGateway = document.getElementById("torModeGatewayBtn")?.classList.contains("active-mode");
   const input = document.getElementById("torProxyInput");
   const saveBtn = document.getElementById("saveTorBtn");
-  const proxy = input ? input.value.trim() : "tor2web";
+  const res = document.getElementById("torTestResult");
+  const proxy = isGateway ? "tor2web" : (input ? input.value.trim() : "tor2web");
+
+  const isCloud = window.location.hostname.includes("vercel.app") || window.location.hostname.includes("github.io");
+  if (isCloud && !isGateway && (proxy.includes("127.0.0.1") || proxy.includes("localhost"))) {
+    if (res) {
+      res.className = "tor-test-box error";
+      res.innerHTML = `
+        <div style="font-weight:600;color:var(--accent-red);margin-bottom:4px;">⚠️ Cannot reach local 127.0.0.1 from Vercel Cloud</div>
+        <p style="margin:0 0 8px 0;font-size:0.78rem;">You are accessing Sentinel via Vercel cloud. Remote cloud functions cannot connect to <code>127.0.0.1</code> on your home computer directly.</p>
+        <button type="button" class="primary-btn btn-sm" onclick="window.quickConnectTor('tor2web');" style="width:100%;font-size:0.8rem;padding:0.5rem 1rem;">
+          ⚡ Switch to Tor2Web Cloud Relay & Connect Now (Works Instantly)
+        </button>
+      `;
+    }
+    return;
+  }
 
   if (saveBtn) saveBtn.textContent = "Connecting...";
 
@@ -325,7 +368,8 @@ window.quickConnectTor = async function(mode = "tor2web") {
     });
   } catch (e) {}
 
-  showToast(`Routing darknet requests via ${proxy}...`, true);
+  window.closeTorModal();
+  showToast(`Routing darknet requests via ${proxy === "tor2web" ? "Tor2Web Cloud Gateway" : proxy}...`, true);
   if (typeof window.checkTorStatus === "function") {
     await window.checkTorStatus();
   }

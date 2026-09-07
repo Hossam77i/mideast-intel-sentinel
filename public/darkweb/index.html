@@ -1370,18 +1370,32 @@
         <div style="margin-bottom: 1rem;">
           <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.4rem;">Select Tor Routing Mode:</label>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-            <button type="button" id="torModeCustomBtn" class="secondary-btn active-mode" onclick="window.selectTorMode('custom')" style="text-align: left; padding: 0.6rem 0.8rem; font-size: 0.82rem;">
-              <strong>💻 Personal Tor Proxy</strong>
-              <div style="font-size: 0.72rem; opacity: 0.75;">Your local PC, VPS, or Tor Browser</div>
-            </button>
-            <button type="button" id="torModeGatewayBtn" class="secondary-btn" onclick="window.selectTorMode('tor2web')" style="text-align: left; padding: 0.6rem 0.8rem; font-size: 0.82rem;">
+            <button type="button" id="torModeGatewayBtn" class="secondary-btn active-mode" onclick="window.selectTorMode('tor2web')" style="text-align: left; padding: 0.6rem 0.8rem; font-size: 0.82rem;">
               <strong>🌐 Cloud Gateway Relay</strong>
               <div style="font-size: 0.72rem; opacity: 0.75;">Decentralized Tor2Web (Zero setup)</div>
+            </button>
+            <button type="button" id="torModeCustomBtn" class="secondary-btn" onclick="window.selectTorMode('custom')" style="text-align: left; padding: 0.6rem 0.8rem; font-size: 0.82rem;">
+              <strong>💻 Personal Tor Proxy</strong>
+              <div style="font-size: 0.72rem; opacity: 0.75;">Local PC (Localhost) or VPS SOCKS5</div>
             </button>
           </div>
         </div>
 
-        <div id="torProxyInputGroup" class="form-group" style="margin-bottom: 1.2rem;">
+        <!-- Mode 1: Cloud Gateway Info -->
+        <div id="torGatewayInfoBox" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 0.9rem; margin-bottom: 1.2rem;">
+          <div style="display: flex; align-items: flex-start; gap: 8px;">
+            <span style="font-size: 1.2rem; line-height: 1;">⚡</span>
+            <div>
+              <strong style="color: var(--accent-green); font-size: 0.85rem;">Decentralized Tor2Web Cloud Gateway (Active)</strong>
+              <p style="margin: 4px 0 0 0; font-size: 0.78rem; color: var(--text-muted); line-height: 1.45;">
+                All darknet searches, leak alerts, and recon requests route through decentralized high-speed Tor2Web gateways (~85ms). Zero configuration required on your device.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mode 2: Custom Proxy Input -->
+        <div id="torProxyInputGroup" class="form-group hidden" style="margin-bottom: 1.2rem;">
           <label style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">
             Tor Proxy URL (SOCKS5h or HTTP):
           </label>
@@ -1393,10 +1407,13 @@
           </div>
           <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
             <span style="font-size: 0.72rem; opacity: 0.7;">Presets:</span>
-            <button type="button" class="preset-pill" onclick="window.setTorPreset('tor2web')">🌐 Tor2Web Cloud (Instant)</button>
             <button type="button" class="preset-pill" onclick="window.setTorPreset('socks5h://127.0.0.1:9050')">💻 Tor Daemon (9050)</button>
             <button type="button" class="preset-pill" onclick="window.setTorPreset('socks5h://127.0.0.1:9150')">🧅 Tor Browser (9150)</button>
+            <button type="button" class="preset-pill" onclick="window.setTorPreset('tor2web')">🌐 Tor2Web Cloud</button>
           </div>
+          <p style="margin: 8px 0 0 0; font-size: 0.74rem; color: var(--text-muted); line-height: 1.4;">
+            💡 <em>Note: If Sentinel is hosted on Vercel cloud, remote servers cannot reach your home PC's <code>127.0.0.1</code> unless you run Sentinel locally (<code>python -m app.main</code>) and switch the top-bar Backend to Local, or use Cloud Gateway Relay.</em>
+          </p>
         </div>
 
         <div id="torTestResult" class="tor-test-box hidden" style="border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.82rem;"></div>
