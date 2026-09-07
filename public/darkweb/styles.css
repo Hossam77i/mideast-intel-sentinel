@@ -979,8 +979,14 @@ mark {
 }
 
 .modal-backdrop.open,
-.modal-backdrop.active {
+.modal-backdrop.active,
+.modal-backdrop:not(.hidden) {
   display: flex !important;
+}
+
+.modal-backdrop.hidden,
+.hidden {
+  display: none !important;
 }
 
 .modal-dialog {

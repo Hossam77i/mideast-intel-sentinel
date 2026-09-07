@@ -90,14 +90,22 @@ window.openBackendModal = function() {
   const modal = document.getElementById("backendModal");
   const input = document.getElementById("backendUrlInput");
   const res = document.getElementById("backendPingResult");
-  if (modal) modal.classList.remove("hidden");
+  if (modal) {
+    modal.classList.remove("hidden");
+    modal.classList.add("open");
+    modal.classList.add("active");
+  }
   if (input) input.value = API_BASE || KNOWN_BACKENDS[0];
   if (res) res.textContent = "";
 };
 
 window.closeBackendModal = function() {
   const modal = document.getElementById("backendModal");
-  if (modal) modal.classList.add("hidden");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("open");
+    modal.classList.remove("active");
+  }
 };
 
 window.resetBackendDefault = function() {
@@ -144,7 +152,11 @@ window.openTorModal = async function() {
   const modal = document.getElementById("torModal");
   const input = document.getElementById("torProxyInput");
   const res = document.getElementById("torTestResult");
-  if (modal) modal.classList.remove("hidden");
+  if (modal) {
+    modal.classList.remove("hidden");
+    modal.classList.add("open");
+    modal.classList.add("active");
+  }
   if (res) { res.className = "tor-test-box hidden"; res.innerHTML = ""; }
 
   const localSaved = localStorage.getItem(STORAGE_TOR_PROXY_KEY);
@@ -156,18 +168,24 @@ window.openTorModal = async function() {
       const resp = await apiFetch("/api/tor/config");
       if (resp.ok) {
         const cfg = await resp.json();
-        if (input) input.value = cfg.proxy_url || "socks5h://127.0.0.1:9050";
-        window.selectTorMode(cfg.mode === "tor2web" ? "tor2web" : "custom");
+        const preferredProxy = cfg.proxy_url || "tor2web";
+        if (input) input.value = preferredProxy;
+        window.selectTorMode(preferredProxy === "tor2web" ? "tor2web" : "custom");
       }
     } catch (e) {
-      if (input) input.value = "socks5h://127.0.0.1:9050";
+      if (input) input.value = "tor2web";
+      window.selectTorMode("tor2web");
     }
   }
 };
 
 window.closeTorModal = function() {
   const modal = document.getElementById("torModal");
-  if (modal) modal.classList.add("hidden");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("open");
+    modal.classList.remove("active");
+  }
 };
 
 window.selectTorMode = function(mode) {
@@ -196,7 +214,7 @@ window.setTorPreset = function(preset) {
 };
 
 window.resetTorDefault = function() {
-  window.setTorPreset("socks5h://127.0.0.1:9050");
+  window.setTorPreset("tor2web");
   const res = document.getElementById("torTestResult");
   if (res) { res.className = "tor-test-box hidden"; res.innerHTML = ""; }
 };
@@ -204,7 +222,7 @@ window.resetTorDefault = function() {
 window.testTorConnection = async function() {
   const input = document.getElementById("torProxyInput");
   const res = document.getElementById("torTestResult");
-  const proxy = input ? input.value.trim() : "socks5h://127.0.0.1:9050";
+  const proxy = input ? input.value.trim() : "tor2web";
 
   if (res) {
     res.className = "tor-test-box";
@@ -247,9 +265,9 @@ window.testTorConnection = async function() {
 window.saveTorConfig = async function() {
   const input = document.getElementById("torProxyInput");
   const saveBtn = document.getElementById("saveTorBtn");
-  const proxy = input ? input.value.trim() : "socks5h://127.0.0.1:9050";
+  const proxy = input ? input.value.trim() : "tor2web";
 
-  if (saveBtn) saveBtn.textContent = "Saving...";
+  if (saveBtn) saveBtn.textContent = "Connecting...";
 
   try {
     localStorage.setItem(STORAGE_TOR_PROXY_KEY, proxy);
@@ -260,14 +278,40 @@ window.saveTorConfig = async function() {
     });
     showToast(`✓ Tor Network configured: ${proxy}`, true);
     window.closeTorModal();
-    if (typeof checkTorStatus === "function") checkTorStatus();
+    if (typeof window.checkTorStatus === "function") {
+      await window.checkTorStatus();
+    }
   } catch (err) {
     localStorage.setItem(STORAGE_TOR_PROXY_KEY, proxy);
     showToast(`✓ Saved locally: ${proxy}`, true);
     window.closeTorModal();
-    if (typeof checkTorStatus === "function") checkTorStatus();
+    if (typeof window.checkTorStatus === "function") {
+      await window.checkTorStatus();
+    }
   } finally {
     if (saveBtn) saveBtn.textContent = "💾 Save & Connect";
+  }
+};
+
+window.quickConnectTor = async function(mode = "tor2web") {
+  const proxy = mode === "tor2web" ? "tor2web" : "socks5h://127.0.0.1:9050";
+  localStorage.setItem(STORAGE_TOR_PROXY_KEY, proxy);
+  const text = document.getElementById("torStatusText");
+  const infoRouting = document.getElementById("torInfoRouting");
+  if (text) text.textContent = "Connecting to " + (mode === "tor2web" ? "Tor2Web Relay..." : "Tor Daemon...");
+  if (infoRouting) infoRouting.textContent = "Connecting...";
+
+  try {
+    await apiFetch("/api/tor/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ proxy_url: proxy })
+    });
+  } catch (e) {}
+
+  showToast(`Routing darknet requests via ${proxy}...`, true);
+  if (typeof window.checkTorStatus === "function") {
+    await window.checkTorStatus();
   }
 };
 // --- END TOR NETWORK CONTROLLER ---
@@ -915,6 +959,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const res = await apiFetch("/api/tor/status");
       const data = await res.json();
+      const infoProxyDisplay = document.getElementById("torInfoProxyDisplay");
       if (data.success && data.is_tor) {
         if (badge) badge.className = "tor-badge operational";
         const label = data.proxy_url === "tor2web" ? "Tor2Web Relay" : (data.mode && data.mode.includes("Personal") ? "My Tor Proxy" : "Tor Online");
@@ -923,7 +968,11 @@ document.addEventListener("DOMContentLoaded", () => {
           cardBadge.textContent = "Operational";
           cardBadge.className = "badge badge-success";
         }
-        if (infoRouting) infoRouting.textContent = `Active (${data.proxy_url || "socks5h://127.0.0.1:9050"})`;
+        if (infoRouting) {
+          infoRouting.textContent = `Active (${data.proxy_url === "tor2web" ? "Tor2Web Cloud Gateway" : data.proxy_url})`;
+          infoRouting.className = "text-accent-green";
+        }
+        if (infoProxyDisplay) infoProxyDisplay.textContent = data.proxy_url || "tor2web";
         if (infoExitIp) infoExitIp.textContent = data.exit_ip || "Tor Exit Node Active";
         if (infoLatency) infoLatency.textContent = `${data.latency_ms} ms`;
       } else {
@@ -933,15 +982,31 @@ document.addEventListener("DOMContentLoaded", () => {
           cardBadge.textContent = "Offline";
           cardBadge.className = "badge badge-danger";
         }
-        if (infoRouting) infoRouting.textContent = "Offline (Click Connect My Tor Network)";
+        if (infoRouting) {
+          infoRouting.textContent = "Offline (Click Connect My Tor Network)";
+          infoRouting.className = "text-accent-red";
+        }
+        if (infoProxyDisplay) infoProxyDisplay.textContent = data.proxy_url || "socks5h://127.0.0.1:9050";
         if (infoExitIp) infoExitIp.textContent = "None";
         if (infoLatency) infoLatency.textContent = "-- ms";
       }
     } catch (e) {
       if (badge) badge.className = "tor-badge degraded";
       if (text) text.textContent = "Tor Offline (Click to Connect)";
+      if (cardBadge) {
+        cardBadge.textContent = "Offline";
+        cardBadge.className = "badge badge-danger";
+      }
+      if (infoRouting) {
+        infoRouting.textContent = "Offline (Click Connect My Tor Network)";
+        infoRouting.className = "text-accent-red";
+      }
+      if (infoExitIp) infoExitIp.textContent = "None";
+      if (infoLatency) infoLatency.textContent = "-- ms";
     }
   }
+
+  window.checkTorStatus = checkTorStatus;
 
   // --- TAB 1: DARKNET SEARCH ENGINE ---
   async function executeSearch(reset = true) {

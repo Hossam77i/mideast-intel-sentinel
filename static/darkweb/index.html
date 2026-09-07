@@ -751,7 +751,7 @@
           <div class="tor-info-box">
             <div class="info-row">
               <span>SOCKS5h Proxy:</span>
-              <code>socks5h://127.0.0.1:9050</code>
+              <code id="torInfoProxyDisplay">socks5h://127.0.0.1:9050</code>
             </div>
             <div class="info-row">
               <span>Tor Routing Status:</span>
@@ -768,8 +768,9 @@
           </div>
 
           <div style="display: flex; gap: 8px; margin-top: 1rem; flex-wrap: wrap;">
-            <button type="button" class="primary-btn" onclick="window.openTorModal()">🧅 Connect My Tor Network</button>
-            <button type="button" id="refreshTorBtn" class="secondary-btn">🔄 Refresh Circuit</button>
+            <button type="button" class="primary-btn" onclick="window.quickConnectTor('tor2web')">⚡ Instant Connect (Tor2Web)</button>
+            <button type="button" class="secondary-btn" onclick="window.openTorModal()">🧅 Connect My Tor Network</button>
+            <button type="button" id="refreshTorBtn" class="secondary-btn" onclick="window.checkTorStatus()">🔄 Refresh Circuit</button>
           </div>
         </div>
 
@@ -1390,9 +1391,9 @@
           </div>
           <div style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
             <span style="font-size: 0.72rem; opacity: 0.7;">Presets:</span>
-            <button type="button" class="preset-pill" onclick="window.setTorPreset('socks5h://127.0.0.1:9050')">Tor Daemon (9050)</button>
-            <button type="button" class="preset-pill" onclick="window.setTorPreset('socks5h://127.0.0.1:9150')">Tor Browser (9150)</button>
-            <button type="button" class="preset-pill" onclick="window.setTorPreset('tor2web')">Tor2Web Cloud</button>
+            <button type="button" class="preset-pill" onclick="window.setTorPreset('tor2web')">🌐 Tor2Web Cloud (Instant)</button>
+            <button type="button" class="preset-pill" onclick="window.setTorPreset('socks5h://127.0.0.1:9050')">💻 Tor Daemon (9050)</button>
+            <button type="button" class="preset-pill" onclick="window.setTorPreset('socks5h://127.0.0.1:9150')">🧅 Tor Browser (9150)</button>
           </div>
         </div>
 
