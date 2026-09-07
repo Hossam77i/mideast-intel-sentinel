@@ -422,14 +422,26 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       const savedTargetStat = localStorage.getItem("darkweb_target_status");
       const targetStat = document.getElementById("targetStatusFilter");
-      if (savedTargetStat && targetStat) {
-        targetStat.value = savedTargetStat;
-        state.targetStatus = savedTargetStat;
+      // 9. URL parameters deep linking
+      const urlParams = new URLSearchParams(window.location.search);
+      const qTab = urlParams.get("tab");
+      const qForum = urlParams.get("forum");
+      const qSearch = urlParams.get("q") || urlParams.get("query");
+      if (qForum && leakForum) {
+        leakForum.value = qForum;
+        state.leakForumType = qForum;
+      }
+      if (qSearch) {
+        const leakSearch = document.getElementById("leakSearchInput");
+        if (leakSearch) {
+          leakSearch.value = qSearch;
+          state.leakSearch = qSearch;
+        }
       }
 
-      // 9. Active tab
+      // 10. Active tab
       const hashTab = window.location.hash ? window.location.hash.substring(1) : null;
-      const savedTab = hashTab || localStorage.getItem("darkweb_active_tab");
+      const savedTab = qTab || hashTab || localStorage.getItem("darkweb_active_tab");
       if (savedTab && document.getElementById(savedTab)) {
         switchTab(savedTab, false);
       }
@@ -740,6 +752,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("leakForumSelect")?.addEventListener("change", (e) => {
       state.leakForumType = e.target.value;
+      localStorage.setItem("darkweb_leak_forum", state.leakForumType);
       loadLeaks(true);
     });
 

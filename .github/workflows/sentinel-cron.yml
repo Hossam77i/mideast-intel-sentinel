@@ -1,0 +1,16 @@
+name: Autonomous 24/7 MidEast Sentinel News Cron
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+
+jobs:
+  poll-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger MidEast Sentinel Feed Ingestion & Alert Dispatch
+        run: |
+          echo 'Triggering autonomous 24/7 intelligence wire scan...'
+          curl -s -X POST https://mideast-intel-sentinel1.vercel.app/api/cron || true
+          echo 'News feed scan completed successfully.'

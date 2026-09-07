@@ -67,6 +67,9 @@
     <button class="nav-tab active" data-tab="tab-feed" onclick="switchTab('tab-feed')">
       <span>📡</span> Intelligence Feed
     </button>
+    <button class="nav-tab" data-tab="tab-correlations" onclick="switchTab('tab-correlations')">
+      <span>⚡</span> Threat Correlations <span class="badge badge-accent" id="correlationBadge">0</span>
+    </button>
     <button class="nav-tab" data-tab="tab-graph" onclick="switchTab('tab-graph')">
       <span>🕸️</span> Knowledge & Forecast Graph
     </button>
@@ -516,6 +519,61 @@
           </div>
         </div>
       </div>
+    <!-- TAB 6: CYBER-KINETIC THREAT CORRELATIONS -->
+    <section id="tab-correlations" class="tab-pane">
+      <div class="correlation-stats-bar">
+        <div class="correlation-stat-card">
+          <div class="correlation-stat-val" id="stat-total-correlations">0</div>
+          <div class="correlation-stat-label">Correlated Dispatches</div>
+        </div>
+        <div class="correlation-stat-card">
+          <div class="correlation-stat-val" id="stat-active-actors">6</div>
+          <div class="correlation-stat-label">Active Cyber Groups</div>
+        </div>
+        <div class="correlation-stat-card">
+          <div class="correlation-stat-val" id="stat-pwn-forums">Pwn / Dark</div>
+          <div class="correlation-stat-label">Underground Boards</div>
+        </div>
+        <div class="correlation-stat-card">
+          <div class="correlation-stat-val" id="stat-avg-confidence">98%</div>
+          <div class="correlation-stat-label">Peak Confidence</div>
+        </div>
+      </div>
+
+      <div class="feed-toolbar" style="margin-bottom: 1rem;">
+        <div class="flex items-center gap-2 flex-wrap flex-1">
+          <label class="text-xs text-slate-400 font-semibold">Filter by Threat Group:</label>
+          <select id="corr-actor-filter" class="form-control" style="max-width: 260px; font-size: 0.8rem;" onchange="renderFilteredCorrelations()">
+            <option value="all">All Threat Actors & Boards</option>
+            <option value="Handala Hack">Handala Hack (Pwn Forum / Pro-Iran)</option>
+            <option value="Cyber Av3ngers">Cyber Av3ngers (Dark Forums / SCADA)</option>
+            <option value="Pwn Forum Syndicate">Pwn Forum Syndicate (Telco / Core)</option>
+            <option value="Dark Forums Exclusives">Dark Forums Exclusives (Drone / Defense)</option>
+            <option value="Predatory Sparrow">Predatory Sparrow (Industrial / SCADA)</option>
+            <option value="LockBit / RansomHub">LockBit 3.0 / RansomHub Enterprise</option>
+          </select>
+
+          <label class="text-xs text-slate-400 font-semibold ml-2">Theatre:</label>
+          <select id="corr-theatre-filter" class="form-control" style="max-width: 180px; font-size: 0.8rem;" onchange="renderFilteredCorrelations()">
+            <option value="all">All Theatres</option>
+            <option value="Israel">Israel</option>
+            <option value="Iran">Iran</option>
+            <option value="Egypt">Egypt</option>
+            <option value="Regional">Regional / Maritime</option>
+          </select>
+        </div>
+        <div>
+          <button class="btn btn-outline btn-xs" onclick="loadThreatCorrelations(true)">
+            <span>🔄</span> Refresh Correlations
+          </button>
+        </div>
+      </div>
+
+      <div id="correlations-container" class="correlation-matrix-grid">
+        <div class="text-center py-12 text-slate-400 col-span-full">
+          <span>Loading cross-platform threat correlations...</span>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -597,6 +655,30 @@
           <button type="button" class="btn btn-outline" onclick="closeBackendModal()">Cancel</button>
           <button type="button" class="btn btn-primary" onclick="testAndSaveBackend()">Test & Connect</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Threat Correlation Dossier Modal -->
+  <div id="correlation-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width: 720px; max-height: 88vh; display: flex; flex-direction: column;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%); border-bottom: 1px solid rgba(245, 158, 11, 0.3);">
+        <div>
+          <h3 class="text-sm font-bold text-amber-400 flex items-center gap-2">
+            <span>⚡</span> Cross-Platform Threat Correlation Dossier
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Middle East Kinetic Wire ➔ Underground Darknet Leaks & Exploit Boards</p>
+        </div>
+        <button class="modal-close" onclick="closeCorrelationModal()">✕</button>
+      </div>
+      <div class="modal-body" id="correlation-modal-body" style="overflow-y: auto; padding: 1.25rem; gap: 1rem;">
+        <div class="flex items-center justify-center p-8 text-slate-400">
+          <span>Loading cross-platform threat correlations...</span>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="text-xs text-slate-400">🐺 Egypt Black Wolf Darknet Sentinel Integration</span>
+        <button class="btn btn-outline" onclick="closeCorrelationModal()">Close</button>
       </div>
     </div>
   </div>

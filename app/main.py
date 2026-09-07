@@ -19,6 +19,7 @@ from .collector import collect_all_news, fetch_historical_archive
 from .graph_engine import get_graph_data, extract_causal_chains, analyze_network_centrality
 from .notifier import send_telegram_message, send_email_alert, dispatch_urgent_alerts
 from .daemon import daemon_instance
+from .correlation_engine import correlate_article_with_threats, get_all_correlations
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sentinel.api")
@@ -216,6 +217,18 @@ def api_articles(
         to_year=to_year
     )
     has_more = (offset + len(items)) < total
+    for art in items:
+        try:
+            corr = correlate_article_with_threats(art)
+            if corr and corr.get("has_correlations"):
+                art["threat_correlation"] = {
+                    "count": corr["correlations_count"],
+                    "top_actor": corr["top_threat_actor"],
+                    "top_forum": corr["top_forum_source"],
+                    "top_score": corr["top_correlation_score"]
+                }
+        except Exception:
+            pass
     return {
         "articles": items,
         "total": total,
@@ -225,7 +238,7 @@ def api_articles(
         "order_by": order_by
     }
 
-@app.post("/api/collect")
+@app.api_route("/api/collect", methods=["GET", "POST"])
 def api_collect():
     try:
         res = collect_all_news()
@@ -234,6 +247,58 @@ def api_collect():
     except Exception as e:
         logger.error(f"Manual collect failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.api_route("/api/cron", methods=["GET", "POST"])
+def api_cron():
+    """Autonomous 24/7 background cron job for Vercel Cron and GitHub Actions."""
+    try:
+        res = collect_all_news()
+        alert_res = dispatch_urgent_alerts()
+        return {
+            "status": "success",
+            "source": "autonomous_247_mideast_cron",
+            "ingestion": res,
+            "alerts": alert_res
+        }
+    except Exception as e:
+        logger.error(f"Cron execution failed: {e}")
+        return {"status": "error", "error": str(e)}
+
+@app.get("/api/correlations")
+def api_get_correlations(limit: int = 30):
+    """Retrieve cross-platform threat correlations between geopolitical news and darknet breach leaks."""
+    try:
+        articles = get_articles(limit=limit, order_by="time_desc")
+        correlations = get_all_correlations(articles)
+        return {
+            "success": True,
+            "total_correlated": len(correlations),
+            "correlations": correlations
+        }
+    except Exception as e:
+        logger.error(f"Error fetching correlations: {e}")
+        return {"success": False, "error": str(e), "correlations": []}
+
+@app.get("/api/correlate-article/{article_id}")
+def api_get_article_correlation(article_id: int):
+    """Retrieve in-depth dark web threat correlations for a specific intelligence dispatch."""
+    try:
+        from .database import get_connection
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM articles WHERE id = ?", (article_id,))
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Article not found")
+        target = dict(row)
+        corr = correlate_article_with_threats(target)
+        return {"success": True, "correlation": corr}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error correlating article {article_id}: {e}")
+        return {"success": False, "error": str(e)}
 
 @app.post("/api/collect-historical")
 def api_collect_historical(payload: dict = Body(...)):

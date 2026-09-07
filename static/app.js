@@ -294,9 +294,11 @@ document.addEventListener("DOMContentLoaded", () => {
   resetAndReloadArticles();
   loadSettings();
   loadNotifications();
+  loadThreatCorrelationsBadge();
 
   setInterval(() => {
     initStats();
+    loadThreatCorrelationsBadge();
   }, 30000);
 });
 
@@ -593,6 +595,8 @@ function switchTab(tabId, updateHistory = true) {
     }, 120);
   } else if (tabId === "tab-forecasts") {
     loadCausalChains();
+  } else if (tabId === "tab-correlations") {
+    loadThreatCorrelations();
   } else if (tabId === "tab-settings") {
     loadSettings();
     loadNotifications();
@@ -834,13 +838,20 @@ function renderArticleCard(a) {
 
   const dateStr = a.published_at ? new Date(a.published_at).toLocaleString([], { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Archive Wire";
 
+  const corrBadge = a.threat_correlation ? `
+    <button class="btn btn-xs btn-correlation" onclick="openCorrelationModal('${a.id}')" title="Cross-Platform Threat Correlation: ${escapeHtml(a.threat_correlation.top_actor)}">
+      ⚡ ${a.threat_correlation.count} Darknet Threats (${escapeHtml(a.threat_correlation.top_actor)})
+    </button>
+  ` : "";
+
   return `
     <article class="article-card ${severityClass}">
       <div class="article-header">
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <span class="badge ${badgeClass}">${badgeLabel}</span>
           <span class="badge badge-country">${escapeHtml(a.country)}</span>
           <span class="badge badge-category">${escapeHtml(a.category)}</span>
+          ${corrBadge}
         </div>
         <span class="text-xs text-slate-400 font-mono">${dateStr}</span>
       </div>
@@ -855,7 +866,8 @@ function renderArticleCard(a) {
 
       <div class="article-footer">
         <span>Source: <b>${escapeHtml(a.source || "OSINT Wire")}</b></span>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 flex-wrap">
+          ${a.threat_correlation ? `<button class="btn btn-outline btn-xs text-amber-400" onclick="openCorrelationModal('${a.id}')">⚡ Threat Dossier</button>` : ""}
           <button class="btn btn-outline btn-xs" onclick="traceArticleInGraph('${a.id}')">Trace in Graph</button>
           <a href="${escapeHtml(a.link)}" target="_blank" rel="noopener noreferrer">Read Source →</a>
         </div>
@@ -1369,3 +1381,279 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+/* ==========================================================================
+   CROSS-PLATFORM THREAT CORRELATION CONTROLLER & MODAL
+   ========================================================================== */
+let allThreatCorrelations = [];
+
+async function loadThreatCorrelationsBadge() {
+  try {
+    const res = await apiFetch("/api/correlations");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && data.correlations) {
+      allThreatCorrelations = data.correlations;
+      const count = allThreatCorrelations.length;
+      const badge = document.getElementById("correlationBadge");
+      if (badge) badge.textContent = `${count} Active`;
+      const statTotal = document.getElementById("stat-total-correlations");
+      if (statTotal) statTotal.textContent = count;
+    }
+  } catch (err) {
+    console.warn("Could not load threat correlations badge:", err);
+  }
+}
+
+async function loadThreatCorrelations(force = false) {
+  const container = document.getElementById("correlations-container");
+  const badge = document.getElementById("correlationBadge");
+  const statTotal = document.getElementById("stat-total-correlations");
+  if (!container) return;
+
+  if (force || allThreatCorrelations.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-12 text-slate-400 col-span-full">
+        <div style="margin-bottom: 0.5rem; font-size: 1.5rem;">⚡</div>
+        <span>Correlating geopolitical intelligence dispatches with darknet disclosures...</span>
+      </div>
+    `;
+
+    try {
+      const res = await apiFetch("/api/correlations");
+      const data = await res.json();
+      if (data && data.correlations) {
+        allThreatCorrelations = data.correlations;
+      } else {
+        allThreatCorrelations = [];
+      }
+    } catch (err) {
+      console.warn("Failed to load correlations:", err);
+      allThreatCorrelations = [];
+    }
+  }
+
+  if (badge) badge.textContent = `${allThreatCorrelations.length} Active`;
+  if (statTotal) statTotal.textContent = allThreatCorrelations.length;
+
+  renderFilteredCorrelations();
+}
+
+function renderFilteredCorrelations() {
+  const container = document.getElementById("correlations-container");
+  if (!container) return;
+
+  const actorFilter = document.getElementById("corr-actor-filter")?.value || "all";
+  const theatreFilter = document.getElementById("corr-theatre-filter")?.value || "all";
+
+  let items = allThreatCorrelations.filter(c => {
+    if (actorFilter !== "all") {
+      const hasActor = (c.matches || []).some(m => (m.threat_name || "").toLowerCase().includes(actorFilter.toLowerCase()));
+      if (!hasActor) return false;
+    }
+    if (theatreFilter !== "all") {
+      if (c.article_country !== theatreFilter && !(c.article_country || "").includes(theatreFilter)) return false;
+    }
+    return true;
+  });
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-12 text-slate-400 col-span-full">
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">🛡️</div>
+        <div style="font-weight: 600; color: #f8fafc;">No Threat Correlations Match Active Filters</div>
+        <p style="font-size: 0.8rem; margin-top: 4px;">Adjust actor or theatre filter to view underground nexus dossiers.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = items.map(c => {
+    const topMatch = (c.matches && c.matches[0]) || {};
+    const leak = topMatch.correlated_leak || {};
+    const queryTerm = encodeURIComponent((leak.target || "").split(" ")[0]);
+    const darkwebUrl = `https://darkweb-sentinel.vercel.app/?tab=leaksTab&q=${queryTerm}`;
+
+    return `
+      <div class="correlation-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+          <div style="flex: 1;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: #94a3b8; font-weight: 700;">
+              Geopolitical News Event
+            </div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; line-height: 1.3; margin-top: 2px;">
+              ${escapeHtml(c.article_title)}
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 6px;">
+              <span class="badge badge-country">${escapeHtml(c.article_country)}</span>
+              <span style="font-size: 0.72rem; color: #cbd5e1;">➔</span>
+              <span style="font-size: 0.72rem; color: #f59e0b; font-weight: 600;">${escapeHtml(topMatch.nexus_type || "Cyber Retaliation")}</span>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <span style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; font-weight: 700; display: inline-block;">
+              ⚡ ${c.top_correlation_score}% Match
+            </span>
+          </div>
+        </div>
+
+        <div style="background: rgba(30, 41, 59, 0.5); border-radius: 6px; padding: 0.75rem; border-left: 3px solid #f59e0b;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="font-weight: 700; color: #fbbf24; font-size: 0.82rem;">
+              🏴‍☠️ ${escapeHtml(c.top_threat_actor)}
+            </span>
+            <span style="font-size: 0.7rem; color: #94a3b8;">
+              ${escapeHtml(c.top_forum_source)}
+            </span>
+          </div>
+          <div style="font-size: 0.8rem; color: #cbd5e1; margin-bottom: 6px;">
+            Target: <b style="color: #38bdf8;">${escapeHtml(leak.target || "SCADA Vault")}</b> (${leak.file_size_gb || 40} GB)
+          </div>
+          <p style="font-size: 0.75rem; color: #94a3b8; line-height: 1.35; margin: 0 0 6px 0;">
+            ${escapeHtml(leak.summary || "")}
+          </p>
+          <div style="font-family: monospace; font-size: 0.68rem; color: #64748b; word-break: break-all;">
+            Evidence: ${escapeHtml(leak.evidence_url || "")}
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 4px;">
+          <button class="btn btn-outline btn-xs text-amber-400" onclick="openCorrelationModal('${c.article_id}')">
+            <span>⚡</span> Deep Dossier (${c.correlations_count})
+          </button>
+          <a href="${darkwebUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-primary" style="text-decoration: none;">
+            Inspect Leak in Darknet ➔
+          </a>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function openCorrelationModal(articleId) {
+  const modal = document.getElementById("correlation-modal");
+  const body = document.getElementById("correlation-modal-body");
+  if (!modal || !body) return;
+
+  modal.classList.remove("hidden");
+  body.innerHTML = `
+    <div style="text-align: center; padding: 2.5rem 1rem; color: #94a3b8;">
+      <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">⚡</div>
+      <div style="font-size: 0.85rem;">Correlating wire dispatch with Darknet Leaks, Pwn Forums & Ransomware DLS...</div>
+    </div>
+  `;
+
+  try {
+    const res = await apiFetch("/api/correlate-article/" + articleId);
+    const data = await res.json();
+    if (!data.success || !data.correlation) {
+      body.innerHTML = `<div style="color: #ef4444; padding: 1rem; text-align: center;">Unable to load threat correlation dossier.</div>`;
+      return;
+    }
+
+    const corr = data.correlation;
+    if (!corr.has_correlations || !corr.matches.length) {
+      body.innerHTML = `
+        <div style="text-align: center; padding: 2rem 1rem; color: #94a3b8;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">🛡️</div>
+          <div style="font-weight: 600; color: #f8fafc; margin-bottom: 0.25rem;">No Direct Darknet Threat Link Detected</div>
+          <p style="font-size: 0.8rem;">No active threat group disclosures or forum dumps currently correlate with this kinetic dispatch.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const matchesHtml = corr.matches.map(m => {
+      const leak = m.correlated_leak || {};
+      const queryTerm = encodeURIComponent((leak.target || "").split(" ")[0]);
+      const darkwebUrl = `https://darkweb-sentinel.vercel.app/?tab=leaksTab&q=${queryTerm}`;
+      const reasonsHtml = (m.reasons || []).map(r => `
+        <span style="display: inline-block; font-size: 0.72rem; padding: 2px 6px; background: rgba(59, 130, 246, 0.15); color: #93c5fd; border-radius: 4px; border: 1px solid rgba(59, 130, 246, 0.3);">
+          ✓ ${escapeHtml(r)}
+        </span>
+      `).join(" ");
+
+      return `
+        <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 0.5rem;">
+            <div>
+              <div style="font-size: 1rem; font-weight: 700; color: #fbbf24; display: flex; align-items: center; gap: 6px;">
+                <span>🏴‍☠️</span> ${escapeHtml(m.threat_name)}
+              </div>
+              <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">
+                ${escapeHtml(m.threat_category)} • Source: <b style="color: #cbd5e1;">${escapeHtml(m.forum_source)}</b>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+              <span style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 0.72rem; padding: 2px 8px; border-radius: 4px; font-weight: 700;">
+                ⚡ ${m.correlation_score}% Match
+              </span>
+              <span style="font-size: 0.7rem; color: #f59e0b; font-weight: 600;">
+                ${escapeHtml(m.nexus_type)}
+              </span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 0.75rem;">
+            ${reasonsHtml}
+          </div>
+
+          <div style="background: rgba(30, 41, 59, 0.7); border-radius: 6px; padding: 0.75rem; border-left: 3px solid #f59e0b;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.25rem;">
+              🚨 Compromised Target: <span style="color: #38bdf8;">${escapeHtml(leak.target)}</span>
+            </div>
+            <p style="font-size: 0.78rem; color: #cbd5e1; margin-bottom: 0.5rem; line-height: 1.4;">
+              ${escapeHtml(leak.summary)}
+            </p>
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; font-size: 0.72rem; color: #94a3b8; gap: 8px;">
+              <div>
+                <span>Sector: <b style="color: #cbd5e1;">${escapeHtml(leak.sector)}</b></span> • 
+                <span>Country: <b style="color: #cbd5e1;">${escapeHtml(leak.country)}</b></span> • 
+                <span>Size: <b style="color: #f87171;">${leak.file_size_gb} GB</b></span> • 
+                <span>Urgency: <b style="color: #fbbf24;">${leak.urgency_score}/100</b></span>
+              </div>
+              <a href="${darkwebUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                <span>Inspect in Darknet Leaks Tracker ➔</span>
+              </a>
+            </div>
+            <div style="margin-top: 0.5rem; font-family: monospace; font-size: 0.7rem; color: #64748b; word-break: break-all;">
+              Evidence Onion: <span style="color: #38bdf8;">${escapeHtml(leak.evidence_url)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    body.innerHTML = `
+      <div style="border-bottom: 1px solid rgba(148, 163, 184, 0.15); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
+        <div style="font-size: 0.72rem; text-transform: uppercase; color: #94a3b8; font-weight: 700; letter-spacing: 0.05em;">
+          Correlated Wire Dispatch
+        </div>
+        <div style="font-size: 0.95rem; font-weight: 700; color: #f8fafc; margin-top: 2px;">
+          ${escapeHtml(corr.article_title)}
+        </div>
+        <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">
+          Theatre: <span class="badge badge-country">${escapeHtml(corr.article_country)}</span> • 
+          <span>Identified Threat Actors: <b style="color: #fbbf24;">${corr.correlations_count}</b></span>
+        </div>
+      </div>
+      <div>
+        ${matchesHtml}
+      </div>
+    `;
+  } catch (err) {
+    body.innerHTML = `<div style="color: #ef4444; padding: 1rem; text-align: center;">Failed to correlate dispatch: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+function closeCorrelationModal() {
+  const modal = document.getElementById("correlation-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+window.loadThreatCorrelationsBadge = loadThreatCorrelationsBadge;
+window.loadThreatCorrelations = loadThreatCorrelations;
+window.renderFilteredCorrelations = renderFilteredCorrelations;
+window.openCorrelationModal = openCorrelationModal;
+window.closeCorrelationModal = closeCorrelationModal;
+
