@@ -19,13 +19,18 @@ if IS_SERVERLESS:
     except Exception:
         pass
     DB_PATH = os.path.join(DATA_DIR, "sentinel.db")
+    source_seed = SEED_DB_PATH if os.path.exists(SEED_DB_PATH) else (ORIGINAL_DB_PATH if os.path.exists(ORIGINAL_DB_PATH) else None)
+    should_copy = False
     if not os.path.exists(DB_PATH):
-        source_seed = SEED_DB_PATH if os.path.exists(SEED_DB_PATH) else (ORIGINAL_DB_PATH if os.path.exists(ORIGINAL_DB_PATH) else None)
-        if source_seed:
-            try:
-                shutil.copyfile(source_seed, DB_PATH)
-            except Exception:
-                pass
+        should_copy = True
+    elif source_seed and os.path.exists(source_seed):
+        if os.path.getmtime(source_seed) > os.path.getmtime(DB_PATH) or os.path.getsize(source_seed) > os.path.getsize(DB_PATH):
+            should_copy = True
+    if should_copy and source_seed:
+        try:
+            shutil.copyfile(source_seed, DB_PATH)
+        except Exception:
+            pass
 else:
     DATA_DIR = ORIGINAL_DATA_DIR
     try:
