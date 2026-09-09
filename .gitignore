@@ -9,10 +9,10 @@ venv/
 .venv/
 
 # Databases & Runtime Data
-data/*.db
+data/*.sqlite
 !data/seed_sentinel.db
-data/*.db-wal
-data/*.db-shm
+data/*.sqlite-wal
+data/*.sqlite-shm
 data/*.sqlite
 data/*.sqlite3
 
