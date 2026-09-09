@@ -1,16 +1,38 @@
-name: Autonomous 24/7 MidEast Sentinel News Cron
+name: Autonomous MidEast Sentinel Scraper
 
 on:
   schedule:
-    - cron: '*/20 * * * *'
+    # Run every 2 hours to keep data fresh without exhausting Vercel's 100 builds/day limit (12 builds a day)
+    - cron: '0 */2 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  poll-news:
+  scrape-and-update:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger MidEast Sentinel Feed Ingestion & Alert Dispatch
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
         run: |
-          echo 'Triggering autonomous 24/7 intelligence wire scan...'
-          curl -s -X POST https://mideast-intel-sentinel1.vercel.app/api/cron || true
-          echo 'News feed scan completed successfully.'
+          pip install -r requirements.txt
+
+      - name: Run Scraper and update database
+        run: |
+          python scripts/github_scraper.py
+
+      - name: Commit and push updated database to trigger Vercel
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/sentinel.db
+          git commit -m "Automated database update: fresh intelligence" || echo "No new intelligence"
+          git push
